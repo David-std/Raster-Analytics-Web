@@ -1,0 +1,184 @@
+{
+  "version": 1,
+  "analytical_grain": "candidate spatial unit x calendar month",
+  "representations": {
+    "primary": ["district_month", "grid_1000m_month", "grid_2000m_month"],
+    "conditional": ["grid_500m_month"],
+    "deferred": ["grid_250m", "iso_week", "day", "daypart_6h"]
+  },
+  "default_temporal_split": {
+    "train": ["2021-01", "2022-12"],
+    "validation": ["2023-01", "2023-12"],
+    "test": ["2024-01", "2024-12"],
+    "excluded_partial_source_period": ["2025-01", "2025-12"]
+  },
+  "features": [
+    {
+      "id": "direct_pedestrian_exposure",
+      "description": "Qualified direct pedestrian volume/exposure aligned to the analytical unit and month.",
+      "role": "direct_exposure",
+      "status": "BLOCKED",
+      "temporal_semantics": "same_period",
+      "source_ids": ["atu_pmu_pedestrian_vehicle_counts"],
+      "unit": "pedestrian movements or other source-defined ratio-scale exposure unit",
+      "can_be_exposure_offset": true
+    },
+    {
+      "id": "population_density_static",
+      "description": "Population-density context from a qualified census snapshot; exposure proxy only.",
+      "role": "exposure_proxy",
+      "status": "CANDIDATE",
+      "temporal_semantics": "static_snapshot",
+      "source_ids": ["inei_census_2017_redatam"],
+      "unit": "persons per square kilometre",
+      "can_be_exposure_offset": false
+    },
+    {
+      "id": "transit_stop_density",
+      "description": "Density of qualified public-transport stops within or around the spatial unit.",
+      "role": "exposure_proxy",
+      "status": "CANDIDATE",
+      "temporal_semantics": "static_snapshot",
+      "source_ids": ["minam_dot_transit_stops"],
+      "unit": "stops per square kilometre",
+      "can_be_exposure_offset": false
+    },
+    {
+      "id": "transport_route_density",
+      "description": "Qualified transport-route geometry density; proxy/context rather than measured flow.",
+      "role": "traffic_context",
+      "status": "CANDIDATE",
+      "temporal_semantics": "static_snapshot",
+      "source_ids": ["minam_dot_transport_routes"],
+      "unit": "route length per square kilometre",
+      "can_be_exposure_offset": false
+    },
+    {
+      "id": "signalized_intersection_density",
+      "description": "Density of signalized intersections where source coverage is proven.",
+      "role": "built_environment",
+      "status": "CANDIDATE",
+      "temporal_semantics": "static_snapshot",
+      "source_ids": ["minam_dot_signalized_intersections"],
+      "unit": "intersections per square kilometre"
+    },
+    {
+      "id": "zoning_land_use_composition",
+      "description": "Composition of qualified zoning categories within the spatial unit.",
+      "role": "built_environment",
+      "status": "CANDIDATE",
+      "temporal_semantics": "static_snapshot",
+      "source_ids": ["minam_dot_zoning"],
+      "unit": "area share by zoning class"
+    },
+    {
+      "id": "pedestrian_crossing_density",
+      "description": "Crossing density only where the source coverage mask proves observation support.",
+      "role": "built_environment",
+      "status": "AUXILIARY",
+      "temporal_semantics": "static_snapshot",
+      "source_ids": ["minam_dot_pedestrian_crossings"],
+      "unit": "crossings per square kilometre"
+    },
+    {
+      "id": "month_of_year_sin",
+      "description": "Deterministic cyclical month encoding derived from the analytical period key.",
+      "role": "temporal_context",
+      "status": "READY",
+      "temporal_semantics": "calendar",
+      "source_ids": [],
+      "unit": null
+    },
+    {
+      "id": "month_of_year_cos",
+      "description": "Deterministic cyclical month encoding derived from the analytical period key.",
+      "role": "temporal_context",
+      "status": "READY",
+      "temporal_semantics": "calendar",
+      "source_ids": [],
+      "unit": null
+    },
+    {
+      "id": "lagged_pedestrian_linked_fatal_count_1m",
+      "description": "Prior-month pedestrian-linked fatal event count for the same spatial unit.",
+      "role": "outcome_history",
+      "status": "CANDIDATE",
+      "temporal_semantics": "lagged",
+      "source_ids": ["onsv_fatal_crashes_2021_2025", "onsv_people_fatal_crashes_2021_2025"],
+      "unit": "events",
+      "minimum_lag_periods": 1
+    },
+    {
+      "id": "lagged_pedestrian_linked_fatal_count_12m",
+      "description": "Twelve-month-lag pedestrian-linked fatal event count for seasonal sensitivity.",
+      "role": "outcome_history",
+      "status": "CANDIDATE",
+      "temporal_semantics": "lagged",
+      "source_ids": ["onsv_fatal_crashes_2021_2025", "onsv_people_fatal_crashes_2021_2025"],
+      "unit": "events",
+      "minimum_lag_periods": 12
+    }
+  ],
+  "targets": [
+    {
+      "id": "pedestrian_linked_fatal_count",
+      "description": "Monthly count of fatal crashes linked to at least one person classified as PEATON.",
+      "kind": "count",
+      "status": "CANDIDATE",
+      "population": "pedestrian_linked_fatal",
+      "training_target": true,
+      "exposure_mode": "none",
+      "required_feature_ids": []
+    },
+    {
+      "id": "strict_fatal_atropello_count",
+      "description": "Monthly count of pedestrian-linked fatal crashes whose recorded class contains ATROPELLO.",
+      "kind": "count",
+      "status": "CANDIDATE",
+      "population": "strict_fatal_atropello",
+      "training_target": true,
+      "exposure_mode": "none",
+      "required_feature_ids": []
+    },
+    {
+      "id": "pedestrian_linked_fatal_occurrence",
+      "description": "Rare-event sensitivity target indicating whether at least one pedestrian-linked fatal crash occurred.",
+      "kind": "binary",
+      "status": "CANDIDATE",
+      "population": "pedestrian_linked_fatal",
+      "training_target": true,
+      "exposure_mode": "none",
+      "required_feature_ids": []
+    },
+    {
+      "id": "fatal_pedestrian_exposure_rate",
+      "description": "Exposure-normalized fatal pedestrian event rate; unavailable until direct compatible exposure is qualified.",
+      "kind": "rate",
+      "status": "BLOCKED",
+      "population": "pedestrian_linked_fatal",
+      "training_target": true,
+      "exposure_mode": "denominator",
+      "required_feature_ids": ["direct_pedestrian_exposure"]
+    },
+    {
+      "id": "relative_risk_index",
+      "description": "User-facing calibrated presentation index derived from a validated model output, never a hand-crafted training label.",
+      "kind": "presentation_index",
+      "status": "BLOCKED",
+      "population": "selected_after_benchmark",
+      "training_target": false,
+      "exposure_mode": "none",
+      "required_feature_ids": []
+    },
+    {
+      "id": "all_pedestrian_collision_count",
+      "description": "Monthly count of fatal and non-fatal pedestrian collisions; blocked until a reproducible broader outcome source is qualified.",
+      "kind": "count",
+      "status": "BLOCKED",
+      "population": "all_pedestrian_collisions",
+      "training_target": true,
+      "exposure_mode": "none",
+      "required_feature_ids": []
+    }
+  ]
+}
