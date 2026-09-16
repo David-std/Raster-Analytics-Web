@@ -1,0 +1,106 @@
+name: Representation audit
+
+on:
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install --upgrade pip && pip install -e ".[dev]"
+      - name: Snapshot INEI Lima district boundaries
+        run: >-
+          python -m pipelines.ingestion.arcgis
+          https://geoservidorperu.minam.gob.pe/arcgis/rest/services/GEOLOMAS_final/MapServer/0
+          --output /tmp/lima-districts.geojson
+          --report /tmp/lima-districts-snapshot.json
+          --timeout 45
+      - name: Snapshot 2021 structural zoning support
+        run: >-
+          python -m pipelines.ingestion.arcgis
+          https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/331
+          --output /tmp/zoning-support.geojson
+          --report /tmp/zoning-support-snapshot.json
+          --out-fields distrito,Anio
+          --out-sr 32718
+          --timeout 90
+      - name: Build ONSV pedestrian-linked fatal outcome layer
+        run: |
+          python -m pipelines.ingestion.onsv sync \
+            --output-dir /tmp/onsv \
+            --report /tmp/onsv-inventory.json
+          python -m pipelines.processing.onsv \
+            --raw-dir /tmp/onsv \
+            --output /tmp/lima-pedestrian-fatal-crashes.csv
+      - name: Run representation experiment
+        run: >-
+          python -m pipelines.representation
+          /tmp/lima-pedestrian-fatal-crashes.csv
+          /tmp/lima-districts.geojson
+          --support /tmp/zoning-support.geojson
+          --support-label zoning_support
+          --support-district-field distrito
+          --support-source-crs EPSG:32718
+          --support-year-field Anio
+          --output /tmp/representation-report.json
+          --grid-sizes 250,500,1000,2000
+          --temporal-kinds month,iso_week,day,daypart_6h
+      - name: Print compact evidence summary
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path('/tmp/representation-report.json').read_text())
+          print(json.dumps({
+              'selection_status': report['selection_status'],
+              'boundary': report['boundary'],
+              'support_mask': report['support_mask'],
+              'district_assignment_audit': report['district_assignment_audit'],
+              'event_count_loaded': report['event_count_loaded'],
+              'strict_atropello_count_loaded': report['strict_atropello_count_loaded'],
+              'blocked_spatial_candidates': report['blocked_spatial_candidates'],
+          }, indent=2, ensure_ascii=False))
+
+          candidate_names = {'district'}
+          for size in (250, 500, 1000, 2000):
+              candidate_names.add(f'grid_{size}m_base')
+              candidate_names.add(f'grid_{size}m_zoning_support_base')
+
+          primary = [
+              item for item in report['results']
+              if item['window_id'] == 'complete_calendar_years_2021_2024'
+              and item['population'] == 'pedestrian_linked_fatal'
+              and item['spatial_representation'] in candidate_names
+          ]
+          compact = [{
+              'spatial': item['spatial_representation'],
+              'temporal': item['temporal_representation'],
+              'units': item['spatial_units'],
+              'periods': item['periods'],
+              'cells': item['unit_period_cells'],
+              'assigned_events': item['assigned_events'],
+              'assignment_ratio': item['event_assignment_ratio'],
+              'zero_event_ratio': item['zero_event_ratio'],
+              'p95': item['events_per_cell_p95'],
+              'max': item['events_per_cell_max'],
+          } for item in primary]
+          print(json.dumps(compact, indent=2, ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p2-representation-audit
+          path: |
+            /tmp/lima-districts-snapshot.json
+            /tmp/lima-districts.geojson
+            /tmp/zoning-support-snapshot.json
+            /tmp/zoning-support.geojson
+            /tmp/onsv-inventory.json
+            /tmp/representation-report.json
+          if-no-files-found: warn

@@ -1,0 +1,60 @@
+{
+  "version": 2,
+  "purpose": "Sources used to evaluate spatial representation, project-boundary assignment and structural urban support.",
+  "sources": [
+    {
+      "id": "inei_lima_district_boundaries_2017_via_minam",
+      "publisher": "Instituto Nacional de Estadística e Informática (INEI), served by MINAM GeoServidor",
+      "status": "ACCEPTED_FOR_REPRESENTATION_ANALYSIS",
+      "evidence_state": "PROVEN_WITH_REAL_SOURCE",
+      "roles": [
+        "project_boundary",
+        "district_reporting_geometry",
+        "representation_experiment_input"
+      ],
+      "layer_url": "https://geoservidorperu.minam.gob.pe/arcgis/rest/services/GEOLOMAS_final/MapServer/0",
+      "published_scope": "Límite de los distritos de Lima Metropolitana (INEI, 2017)",
+      "geometry_type": "polygon",
+      "projected_analysis_crs": "EPSG:32718",
+      "observed_live_evidence": {
+        "district_count": 43,
+        "boundary_area_km2": 2641.889,
+        "onsv_events_checked": 897,
+        "events_assigned_to_boundary": 897,
+        "source_district_geometry_mismatches": 0
+      },
+      "limitations": [
+        "Administrative geometry vintage is 2017.",
+        "Accepted for project-boundary and representation analysis; it does not select district as the final model unit.",
+        "A newer official boundary may replace it only after equivalent coverage and identifiers are verified."
+      ]
+    },
+    {
+      "id": "minam_urban_zoning_2021_structural_support",
+      "publisher": "MINAM GeoServidor",
+      "status": "ACCEPTED_AS_STRUCTURAL_SUPPORT_DIAGNOSTIC",
+      "evidence_state": "PROVEN_WITH_REAL_SOURCE",
+      "roles": [
+        "urban_structural_support",
+        "representation_sparsity_diagnostic"
+      ],
+      "layer_url": "https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/331",
+      "published_scope": "Urban zoning polygons, 2021 snapshot",
+      "geometry_type": "polygon",
+      "projected_analysis_crs": "EPSG:32718",
+      "observed_live_evidence": {
+        "input_feature_count": 87858,
+        "retained_project_feature_count": 87379,
+        "retained_project_district_count": 43,
+        "excluded_out_of_scope_feature_count": 479,
+        "normalized_extra_ordinate_count": 87379
+      },
+      "limitations": [
+        "The layer is a 2021 structural snapshot and is not a time-varying exposure source.",
+        "Intersection with zoning support must not be interpreted as measured pedestrian or traffic exposure.",
+        "The layer must not be used as a risk denominator, outcome label or substitute for direct exposure.",
+        "The source geometry contains an extra ArcGIS ordinate; the pipeline deterministically normalizes to XY before geometric analysis."
+      ]
+    }
+  ]
+}
