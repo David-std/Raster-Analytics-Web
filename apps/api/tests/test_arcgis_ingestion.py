@@ -1,6 +1,8 @@
 import json
 from io import BytesIO
 
+import pytest
+
 from pipelines.ingestion import arcgis
 
 
@@ -61,7 +63,7 @@ def test_arcgis_snapshot_fetches_sorted_id_batches(monkeypatch, tmp_path) -> Non
     report = arcgis.fetch_arcgis_geojson(
         "https://example.test/MapServer/0",
         output,
-        batch_size=2,
+        batch_size=9,
         timeout=10,
     )
 
@@ -69,6 +71,35 @@ def test_arcgis_snapshot_fetches_sorted_id_batches(monkeypatch, tmp_path) -> Non
     assert report.requested_object_ids == 3
     assert report.feature_count == 3
     assert report.object_id_field == "OBJECTID"
+    assert report.server_max_record_count == 2
+    assert report.batch_size == 2
     assert len(report.sha256) == 64
     assert [item["properties"]["OBJECTID"] for item in payload["features"]] == [1, 2, 3]
     assert sum("objectIds=" in url for url in seen_urls) == 2
+
+
+def test_arcgis_snapshot_rejects_server_side_truncation(monkeypatch, tmp_path) -> None:
+    def fake_urlopen(request, timeout):
+        assert timeout == 10
+        url = request.full_url
+        if "returnIdsOnly=true" in url:
+            return _Response({"objectIds": [1, 2]})
+        if "/query?" not in url:
+            return _Response({"name": "Layer", "maxRecordCount": 2})
+        return _Response(
+            {
+                "type": "FeatureCollection",
+                "features": [
+                    {"type": "Feature", "properties": {"OBJECTID": 1}, "geometry": None}
+                ],
+            }
+        )
+
+    monkeypatch.setattr(arcgis, "urlopen", fake_urlopen)
+
+    with pytest.raises(ValueError, match="truncated or incomplete"):
+        arcgis.fetch_arcgis_geojson(
+            "https://example.test/MapServer/0",
+            tmp_path / "snapshot.geojson",
+            timeout=10,
+        )
