@@ -10,7 +10,7 @@ The system combines a geospatial web interface, an API for risk queries, and a r
 Source data
     |
     v
-Profiling and processing
+Ingestion and processing
     |
     v
 Risk model
@@ -67,29 +67,20 @@ npm run dev
 
 The application is served at `http://localhost:5173` by default.
 
-## Data sources
+## Data
 
-Official source workbooks are registered under `data/sources/`. To download and inspect the primary ONSV sources:
+Official source workbooks are registered under `data/sources/`. To download the primary ONSV crash/person sources and build the normalized Metropolitan Lima pedestrian fatal-crash table:
 
 ```bash
 python -m pipelines.ingestion.onsv sync
+python -m pipelines.processing.onsv
 ```
 
-Raw files and generated inventories remain outside version control.
-
-## Profile a CSV dataset
-
-The profiling pipeline inspects a CSV without modifying the source file:
-
-```bash
-python -m pipelines.profiling path/to/source.csv --output reports/source-profile.json
-```
-
-The generated report includes file traceability, row and column counts, duplicate detection, null rates, conservative type inference, coordinate checks, temporal candidates, and quality warnings.
+Raw files and generated datasets remain outside version control.
 
 ## Quality checks
 
-Backend:
+Backend and pipelines:
 
 ```bash
 ruff check .
