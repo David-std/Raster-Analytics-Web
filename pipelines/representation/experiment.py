@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import csv
-import json
 import math
 from collections import Counter
 from dataclasses import asdict, dataclass
@@ -22,6 +21,7 @@ from pipelines.representation.spatial import (
     normalize_name,
     projected_boundary_union,
 )
+from pipelines.representation.support import SupportMask, load_support_mask
 from pipelines.representation.temporal import (
     enumerate_period_ids,
     parse_event_datetime,
@@ -98,11 +98,11 @@ def load_events(csv_path: str | Path) -> list[Event]:
     return events
 
 
-def _population_filter(events: list[Event], population: str) -> list[Event]:
+def _population_indexes(events: list[Event], population: str) -> list[int]:
     if population == "pedestrian_linked_fatal":
-        return events
+        return list(range(len(events)))
     if population == "strict_fatal_atropello":
-        return [event for event in events if event.strict_atropello]
+        return [index for index, event in enumerate(events) if event.strict_atropello]
     raise ValueError(f"Unknown outcome population: {population}")
 
 
@@ -138,30 +138,10 @@ def _distribution_metrics(
         "zero_event_cells": zero_cells,
         "zero_event_ratio": round(zero_cells / total_cells, 6) if total_cells else None,
         "events_per_cell_mean": round(assigned_events / total_cells, 8) if total_cells else None,
-        "events_per_cell_p50": _nearest_rank_quantile(
-            total_cells,
-            zero_cells,
-            frequency,
-            0.50,
-        ),
-        "events_per_cell_p90": _nearest_rank_quantile(
-            total_cells,
-            zero_cells,
-            frequency,
-            0.90,
-        ),
-        "events_per_cell_p95": _nearest_rank_quantile(
-            total_cells,
-            zero_cells,
-            frequency,
-            0.95,
-        ),
-        "events_per_cell_p99": _nearest_rank_quantile(
-            total_cells,
-            zero_cells,
-            frequency,
-            0.99,
-        ),
+        "events_per_cell_p50": _nearest_rank_quantile(total_cells, zero_cells, frequency, 0.50),
+        "events_per_cell_p90": _nearest_rank_quantile(total_cells, zero_cells, frequency, 0.90),
+        "events_per_cell_p95": _nearest_rank_quantile(total_cells, zero_cells, frequency, 0.95),
+        "events_per_cell_p99": _nearest_rank_quantile(total_cells, zero_cells, frequency, 0.99),
         "events_per_cell_max": max(pair_counts.values(), default=0),
         "events_per_nonzero_cell_mean": (
             round(mean(pair_counts.values()), 6) if pair_counts else None
@@ -190,56 +170,84 @@ def _district_candidate(events: list[Event], districts) -> tuple[SpatialCandidat
         "source_district_geometry_mismatches": sum(mismatches.values()),
         "mismatch_pairs": dict(mismatches.most_common()),
     }
-    candidate = SpatialCandidate(
-        representation_id="district",
-        kind="district",
-        unit_count=len(districts),
-        assignments=tuple(assignments),
-        metadata={"district_count": len(districts)},
+    return (
+        SpatialCandidate(
+            representation_id="district",
+            kind="district",
+            unit_count=len(districts),
+            assignments=tuple(assignments),
+            metadata={"district_count": len(districts), "support_label": None},
+        ),
+        audit,
     )
-    return candidate, audit
+
+
+def _candidate_from_grid(
+    events: list[Event],
+    grid: GridDefinition,
+    projection: Transformer,
+) -> SpatialCandidate:
+    assignments = tuple(
+        assign_point_to_grid(
+            event.longitude,
+            event.latitude,
+            grid,
+            transformer=projection,
+        )
+        for event in events
+    )
+    assigned = sum(unit_id is not None for unit_id in assignments)
+    return SpatialCandidate(
+        representation_id=grid.representation_id,
+        kind="regular_grid",
+        unit_count=grid.unit_count,
+        assignments=assignments,
+        metadata={
+            "cell_size_m": grid.cell_size_m,
+            "offset_fraction": grid.offset_fraction,
+            "origin_x": round(grid.origin_x, 3),
+            "origin_y": round(grid.origin_y, 3),
+            "support_label": grid.support_label,
+            "full_cell_count": grid.full_cell_count,
+            "partial_cell_count": grid.partial_cell_count,
+            "boundary_intersecting_cell_count": grid.boundary_intersecting_cell_count,
+            "excluded_by_support_count": grid.excluded_by_support_count,
+            "retained_cell_ratio_of_boundary_grid": round(
+                grid.unit_count / grid.boundary_intersecting_cell_count,
+                6,
+            ),
+            "all_event_assignment_ratio": round(assigned / len(events), 6),
+            "boundary_area_km2": round(grid.boundary_area_km2, 3),
+        },
+    )
 
 
 def _grid_candidates(
     events: list[Event],
     boundary_projected,
     grid_sizes: tuple[int, ...],
+    support_mask: SupportMask | None,
 ) -> list[SpatialCandidate]:
     projection = Transformer.from_crs("EPSG:4326", "EPSG:32718", always_xy=True)
     candidates: list[SpatialCandidate] = []
     for cell_size in grid_sizes:
         for offset_fraction in (0.0, 0.5):
-            grid: GridDefinition = build_grid_definition(
+            full_grid = build_grid_definition(
                 boundary_projected,
                 cell_size,
                 offset_fraction=offset_fraction,
             )
-            assignments = tuple(
-                assign_point_to_grid(
-                    event.longitude,
-                    event.latitude,
-                    grid,
-                    transformer=projection,
+            candidates.append(_candidate_from_grid(events, full_grid, projection))
+
+            if support_mask is not None:
+                masked_grid = build_grid_definition(
+                    boundary_projected,
+                    cell_size,
+                    offset_fraction=offset_fraction,
+                    support_predicate=support_mask.intersects,
+                    support_label=support_mask.profile.support_label,
                 )
-                for event in events
-            )
-            candidates.append(
-                SpatialCandidate(
-                    representation_id=grid.representation_id,
-                    kind="regular_grid",
-                    unit_count=grid.unit_count,
-                    assignments=assignments,
-                    metadata={
-                        "cell_size_m": grid.cell_size_m,
-                        "offset_fraction": grid.offset_fraction,
-                        "origin_x": round(grid.origin_x, 3),
-                        "origin_y": round(grid.origin_y, 3),
-                        "full_cell_count": grid.full_cell_count,
-                        "partial_cell_count": grid.partial_cell_count,
-                        "boundary_area_km2": round(grid.boundary_area_km2, 3),
-                    },
-                )
-            )
+                candidates.append(_candidate_from_grid(events, masked_grid, projection))
     return candidates
 
 
@@ -305,6 +313,7 @@ def _result_for(
 
     total_cells = spatial.unit_count * len(periods)
     metrics = _distribution_metrics(pair_counts, total_cells, assigned_events)
+    denominator = assigned_events + unassigned_events
     return {
         "window_id": window.window_id,
         "window_role": window.role,
@@ -318,6 +327,9 @@ def _result_for(
         "unit_period_cells": total_cells,
         "assigned_events": assigned_events,
         "unassigned_events": unassigned_events,
+        "event_assignment_ratio": (
+            round(assigned_events / denominator, 6) if denominator else None
+        ),
         "spatial_units_with_event": len(spatial_with_event),
         "spatial_unit_activity_ratio": (
             round(len(spatial_with_event) / spatial.unit_count, 6)
@@ -333,13 +345,14 @@ def _result_for(
 
 
 def _boundary_sensitivity(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    indexed: dict[tuple[str, str, str, int, float], dict[str, Any]] = {}
+    indexed: dict[tuple[str, str, str, int, str, float], dict[str, Any]] = {}
     for result in results:
         metadata = result["spatial_metadata"]
         if result["spatial_kind"] != "regular_grid":
             continue
         cell_size = metadata.get("cell_size_m")
         offset = metadata.get("offset_fraction")
+        support_label = metadata.get("support_label") or "full_boundary"
         if not isinstance(cell_size, int) or not isinstance(offset, (int, float)):
             continue
         key = (
@@ -347,12 +360,13 @@ def _boundary_sensitivity(results: list[dict[str, Any]]) -> list[dict[str, Any]]
             result["population"],
             result["temporal_representation"],
             cell_size,
+            str(support_label),
             float(offset),
         )
         indexed[key] = result
 
     comparisons: list[dict[str, Any]] = []
-    prefixes = sorted({key[:4] for key in indexed})
+    prefixes = sorted({key[:5] for key in indexed})
     for prefix in prefixes:
         base = indexed.get((*prefix, 0.0))
         shifted = indexed.get((*prefix, 0.5))
@@ -364,6 +378,7 @@ def _boundary_sensitivity(results: list[dict[str, Any]]) -> list[dict[str, Any]]
                 "population": prefix[1],
                 "temporal_representation": prefix[2],
                 "cell_size_m": prefix[3],
+                "support_label": prefix[4],
                 "unit_count_delta_half_shift_minus_base": (
                     shifted["spatial_units"] - base["spatial_units"]
                 ),
@@ -371,6 +386,7 @@ def _boundary_sensitivity(results: list[dict[str, Any]]) -> list[dict[str, Any]]
                     shifted["zero_event_ratio"] - base["zero_event_ratio"],
                     6,
                 ),
+                "assigned_event_delta": shifted["assigned_events"] - base["assigned_events"],
                 "occupied_cell_delta": (
                     shifted["occupied_unit_period_cells"]
                     - base["occupied_unit_period_cells"]
@@ -391,27 +407,42 @@ def run_representation_experiment(
     temporal_kinds: tuple[str, ...] = ("month", "iso_week", "day", "daypart_6h"),
     district_field: str = "NOMBDIST",
     province_field: str | None = "NOMBPROV",
+    support_geojson: str | Path | None = None,
+    support_label: str = "zoning_support",
+    support_district_field: str = "distrito",
+    support_source_crs: str = "EPSG:32718",
+    support_year_field: str | None = "Anio",
 ) -> dict[str, Any]:
-    """Measure candidate spatial-temporal representations without selecting one prematurely."""
+    """Measure spatial-temporal candidates without selecting one prematurely."""
     events = load_events(event_csv)
     districts = load_district_boundaries(
         boundary_geojson,
         district_field=district_field,
         province_field=province_field,
     )
+    expected_districts = {district.name for district in districts}
     boundary_projected = projected_boundary_union(districts)
+
+    support_mask = None
+    if support_geojson is not None:
+        support_mask = load_support_mask(
+            support_geojson,
+            expected_districts=expected_districts,
+            district_field=support_district_field,
+            support_label=support_label,
+            source_crs=support_source_crs,
+            year_field=support_year_field,
+        )
+
     district_candidate, district_audit = _district_candidate(events, districts)
     spatial_candidates = [district_candidate]
-    spatial_candidates.extend(_grid_candidates(events, boundary_projected, grid_sizes))
+    spatial_candidates.extend(
+        _grid_candidates(events, boundary_projected, grid_sizes, support_mask)
+    )
 
     populations = ("pedestrian_linked_fatal", "strict_fatal_atropello")
     indexes_by_population = {
-        population: [
-            index
-            for index, event in enumerate(events)
-            if event in _population_filter(events, population)
-        ]
-        for population in populations
+        population: _population_indexes(events, population) for population in populations
     }
 
     results: list[dict[str, Any]] = []
@@ -435,8 +466,8 @@ def run_representation_experiment(
     return {
         "selection_status": "NOT_SELECTED",
         "selection_reason": (
-            "P2 measures sparsity, assignment and boundary sensitivity before a spatial or "
-            "temporal representation is frozen."
+            "P2 measures sparsity, event assignment, source support and boundary sensitivity "
+            "before a spatial or temporal representation is frozen."
         ),
         "event_source": str(event_csv),
         "boundary_source": str(boundary_geojson),
@@ -452,6 +483,13 @@ def run_representation_experiment(
         },
         "boundary": district_geometry_summary(districts),
         "district_assignment_audit": district_audit,
+        "support_mask": asdict(support_mask.profile) if support_mask is not None else None,
+        "support_interpretation": (
+            "A support mask only limits where a structural source proves mapped urban support; "
+            "it is not pedestrian exposure, a risk denominator, or a final spatial-unit choice."
+            if support_mask is not None
+            else None
+        ),
         "analysis_windows": [
             {
                 **asdict(window),
