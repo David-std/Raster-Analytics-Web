@@ -7,6 +7,8 @@ from ml import datasets as ds
 
 CATALOG_PATH = Path("data/features/catalog.json")
 SOURCE_CATALOG_PATH = Path("data/sources/qualification.json")
+TRANSFORM_CONTRACT_PATH = Path("data/features/transforms.json")
+COVERAGE_EVIDENCE_PATH = Path("data/features/coverage-evidence.json")
 
 
 def test_repository_contract_catalog_is_valid() -> None:
@@ -30,6 +32,36 @@ def test_feature_lineage_references_qualified_source_ids() -> None:
         if source_id not in source_ids
     }
     assert missing == set()
+
+
+def test_transform_contract_references_catalogued_features_and_sources() -> None:
+    catalog = ds.load_contract_catalog(CATALOG_PATH)
+    source_catalog = json.loads(SOURCE_CATALOG_PATH.read_text(encoding="utf-8"))
+    transforms = json.loads(TRANSFORM_CONTRACT_PATH.read_text(encoding="utf-8"))
+    source_ids = {item["id"] for item in source_catalog["sources"]}
+
+    for item in transforms["transforms"]:
+        assert item["feature_id"] in catalog.features
+        assert item["source_id"] in source_ids
+
+
+def test_coverage_evidence_references_qualified_sources_and_known_representations() -> None:
+    source_catalog = json.loads(SOURCE_CATALOG_PATH.read_text(encoding="utf-8"))
+    evidence = json.loads(COVERAGE_EVIDENCE_PATH.read_text(encoding="utf-8"))
+    source_ids = {item["id"] for item in source_catalog["sources"]}
+
+    assert evidence["source"]["status"] == "PROVEN_WITH_REAL_SOURCE"
+    assert evidence["representations"]["district"] == 43
+    for item in evidence["sources"]:
+        assert item["source_id"] in source_ids
+        for representation in (
+            "district",
+            "grid_500m_zoning_support_base",
+            "grid_1000m_zoning_support_base",
+            "grid_2000m_zoning_support_base",
+        ):
+            ratio = item[representation]["observed_ratio"]
+            assert 0.0 <= ratio <= 1.0
 
 
 def test_proxy_exposure_cannot_be_promoted_to_offset() -> None:
