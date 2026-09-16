@@ -95,6 +95,7 @@ jobs:
           print(json.dumps(compact, indent=2, ensure_ascii=False))
           PY
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: p2-representation-audit
           path: |
@@ -104,4 +105,4 @@ jobs:
             /tmp/zoning-support.geojson
             /tmp/onsv-inventory.json
             /tmp/representation-report.json
-          if-no-files-found: error
+          if-no-files-found: warn
