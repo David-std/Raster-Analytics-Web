@@ -1,0 +1,107 @@
+name: Feature coverage audit
+
+on:
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install --upgrade pip && pip install -e ".[dev]"
+      - name: Prepare artifact directories
+        run: mkdir -p /tmp/feature-sources /tmp/feature-snapshots
+      - name: Snapshot Lima district boundaries
+        run: >-
+          python -m pipelines.ingestion.arcgis
+          https://geoservidorperu.minam.gob.pe/arcgis/rest/services/GEOLOMAS_final/MapServer/0
+          --output /tmp/lima-districts.geojson
+          --report /tmp/feature-snapshots/lima-districts.json
+          --timeout 45
+      - name: Snapshot signalized intersections
+        run: >-
+          python -m pipelines.ingestion.arcgis
+          https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/303
+          --output /tmp/feature-sources/signalized-intersections.geojson
+          --report /tmp/feature-snapshots/signalized-intersections.json
+          --out-sr 32718
+          --timeout 60
+      - name: Snapshot transit stops
+        run: >-
+          python -m pipelines.ingestion.arcgis
+          https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/304
+          --output /tmp/feature-sources/transit-stops.geojson
+          --report /tmp/feature-snapshots/transit-stops.json
+          --out-sr 32718
+          --timeout 60
+      - name: Snapshot transport routes
+        run: >-
+          python -m pipelines.ingestion.arcgis
+          https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/314
+          --output /tmp/feature-sources/transport-routes.geojson
+          --report /tmp/feature-snapshots/transport-routes.json
+          --out-sr 32718
+          --timeout 60
+      - name: Snapshot pedestrian crossings
+        run: >-
+          python -m pipelines.ingestion.arcgis
+          https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/309
+          --output /tmp/feature-sources/pedestrian-crossings.geojson
+          --report /tmp/feature-snapshots/pedestrian-crossings.json
+          --out-sr 32718
+          --timeout 60
+      - name: Snapshot zoning polygons
+        run: >-
+          python -m pipelines.ingestion.arcgis
+          https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/331
+          --output /tmp/feature-sources/zoning.geojson
+          --report /tmp/feature-snapshots/zoning.json
+          --out-sr 32718
+          --timeout 90
+      - name: Measure feature coverage
+        run: >-
+          python -m pipelines.features
+          /tmp/lima-districts.geojson
+          --config data/features/coverage-sources.json
+          --source-dir /tmp/feature-sources
+          --support /tmp/feature-sources/zoning.geojson
+          --support-district-field distrito
+          --support-source-crs EPSG:32718
+          --support-year-field Anio
+          --grid-sizes 500,1000,2000
+          --output /tmp/feature-coverage-report.json
+      - name: Print compact evidence summary
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path('/tmp/feature-coverage-report.json').read_text())
+          compact = [{
+              'source': item['source_id'],
+              'feature': item['feature_id'],
+              'representation': item['representation_id'],
+              'units': item['unit_count'],
+              'observed_units': item['units_with_observed_features'],
+              'observed_ratio': item['observed_unit_ratio'],
+              'coverage_unresolved': item['coverage_unresolved_units'],
+              'outside_features': item['source_features_outside_units'],
+          } for item in report['reports']]
+          print(json.dumps({
+              'selection_status': report['selection_status'],
+              'representations': report['representations'],
+              'coverage': compact,
+          }, indent=2, ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: feature-coverage-audit
+          path: |
+            /tmp/feature-snapshots
+            /tmp/feature-coverage-report.json
+          if-no-files-found: warn
