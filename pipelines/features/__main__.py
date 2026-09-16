@@ -9,7 +9,8 @@ from pipelines.features.coverage import (
     SourceCoverageSemantics,
     build_district_units,
     build_grid_units,
-    profile_source_coverage,
+    load_source_geometries,
+    profile_loaded_source_coverage,
 )
 from pipelines.representation.spatial import (
     build_grid_definition,
@@ -101,14 +102,18 @@ def main() -> None:
         if not source_path.exists():
             raise FileNotFoundError(f"missing source snapshot for {source_id}: {source_path}")
 
+        source_geometries, source_profile = load_source_geometries(
+            source_path,
+            source_crs=source_crs,
+        )
         for representation_id, units in representations.items():
-            report = profile_source_coverage(
+            report = profile_loaded_source_coverage(
                 source_id=source_id,
                 feature_id=feature_id,
                 representation_id=representation_id,
                 units=units,
-                source_path=source_path,
-                source_crs=source_crs,
+                source_geometries=source_geometries,
+                source_profile=source_profile,
                 coverage_semantics=semantics,
             )
             reports.append(report.to_dict())
