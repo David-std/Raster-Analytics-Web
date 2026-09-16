@@ -18,6 +18,7 @@ class ObservationState(StrEnum):
     OBSERVED = "observed"
     TRUE_ZERO = "true_zero"
     MISSING = "missing"
+    SOURCE_COVERAGE_UNRESOLVED = "source_coverage_unresolved"
     OUTSIDE_SOURCE_COVERAGE = "outside_source_coverage"
     UNAVAILABLE_FOR_PERIOD = "unavailable_for_period"
     NOT_APPLICABLE = "not_applicable"
@@ -150,6 +151,7 @@ class LeakageSafeDatasetBuilder:
             )
         if observation.state in {
             ObservationState.MISSING,
+            ObservationState.SOURCE_COVERAGE_UNRESOLVED,
             ObservationState.OUTSIDE_SOURCE_COVERAGE,
             ObservationState.UNAVAILABLE_FOR_PERIOD,
             ObservationState.NOT_APPLICABLE,
