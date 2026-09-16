@@ -1,5 +1,6 @@
 import json
 from io import BytesIO
+from urllib.parse import parse_qs, urlparse
 
 from pipelines.profiling import arcgis_profiler
 
@@ -18,7 +19,7 @@ class _Response:
         return self._stream.read()
 
 
-def test_arcgis_layer_profile_uses_metadata_and_count(monkeypatch) -> None:
+def test_arcgis_layer_profile_uses_metadata_count_extent_and_distinct_values(monkeypatch) -> None:
     metadata = {
         "name": "Cruces Peatonales",
         "type": "Feature Layer",
@@ -38,17 +39,44 @@ def test_arcgis_layer_profile_uses_metadata_and_count(monkeypatch) -> None:
             {"name": "DISTRICT", "alias": "District", "type": "esriFieldTypeString"},
         ],
     }
-    count = {"count": 321}
 
     def fake_urlopen(request, timeout):
         assert timeout == 10
-        return _Response(count if "/query?" in request.full_url else metadata)
+        parsed = urlparse(request.full_url)
+        query = parse_qs(parsed.query)
+        if not parsed.path.endswith("/query"):
+            return _Response(metadata)
+        if query.get("returnCountOnly") == ["true"]:
+            return _Response({"count": 321})
+        if query.get("returnExtentOnly") == ["true"]:
+            return _Response(
+                {
+                    "extent": {
+                        "xmin": -77.1,
+                        "ymin": -12.2,
+                        "xmax": -76.9,
+                        "ymax": -11.9,
+                        "spatialReference": {"wkid": 4326},
+                    }
+                }
+            )
+        if query.get("returnDistinctValues") == ["true"]:
+            return _Response(
+                {
+                    "features": [
+                        {"attributes": {"DISTRICT": "ATE"}},
+                        {"attributes": {"DISTRICT": "BARRANCO"}},
+                    ]
+                }
+            )
+        raise AssertionError(request.full_url)
 
     monkeypatch.setattr(arcgis_profiler, "urlopen", fake_urlopen)
 
     profile = arcgis_profiler.profile_arcgis_layer(
         "crossings",
         "https://example.test/MapServer/1",
+        distinct_fields=("DISTRICT", "MISSING"),
         timeout=10,
     )
 
@@ -57,6 +85,9 @@ def test_arcgis_layer_profile_uses_metadata_and_count(monkeypatch) -> None:
     assert profile.geometry_type == "esriGeometryPoint"
     assert profile.feature_count == 321
     assert profile.spatial_reference == 32718
+    assert profile.wgs84_extent["xmin"] == -77.1
+    assert profile.distinct_values["DISTRICT"] == ["ATE", "BARRANCO"]
+    assert profile.distinct_value_errors["MISSING"] == "Field not present in layer metadata"
     assert profile.supported_query_formats == ["JSON", "geoJSON"]
     assert profile.fields[1]["name"] == "DISTRICT"
 
