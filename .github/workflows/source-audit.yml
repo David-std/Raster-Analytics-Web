@@ -1,8 +1,6 @@
 name: Source audit
 
 on:
-  push:
-    branches: [data/source-profiling]
   workflow_dispatch:
 
 jobs:
@@ -69,6 +67,7 @@ jobs:
               'onsv_temporal_candidates': profile['temporal_candidates'],
               'onsv_coordinate_profile': profile['coordinate_profile'],
               'onsv_year_coverage': quality['year_coverage'],
+              'onsv_target_population_candidates': quality['target_population_candidates'],
               'onsv_crash_class_distribution': quality['crash_class_distribution'],
               'onsv_district_coverage': quality['district_coverage'],
           }, indent=2, ensure_ascii=False))
