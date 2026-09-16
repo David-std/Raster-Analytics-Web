@@ -2,8 +2,8 @@ import csv
 from datetime import datetime
 
 from openpyxl import Workbook
-from pipelines.processing.onsv import build_lima_pedestrian_fatal_crashes
 
+from pipelines.processing.onsv import build_lima_pedestrian_fatal_crashes
 
 CRASH_HEADERS = [
     "CÓDIGO SINIESTRO",
