@@ -139,9 +139,9 @@ def polygon_category_composition(
     """Measure polygon-category area shares while preserving coverage and overlap diagnostics.
 
     Shares use the full analytical-unit area as denominator. They are therefore not silently
-    renormalized to 100% when the source covers only part of a unit. `observed_area_ratio` reports the
-    union of all observed source geometry, while `overlap_ratio` exposes cross-category overlap that
-    could otherwise make category shares appear more complete than the geometry really is.
+    renormalized to 100% when the source covers only part of a unit. `observed_area_ratio` reports
+    the union of all observed source geometry, while `overlap_ratio` exposes cross-category overlap
+    that could otherwise make category shares appear more complete than the geometry really is.
     """
     unit_geometries, tree = _unit_index(units)
     clipped_by_unit: list[dict[str, list[BaseGeometry]]] = [{} for _ in units]
