@@ -3,14 +3,32 @@
 Reproducible data path:
 
 ```text
-source -> profiling -> ingest -> clean -> geospatial -> temporal -> model-ready dataset
+source -> ingestion -> profiling -> processing -> model-ready dataset
 ```
 
-## Profiling
+## ONSV ingestion
 
-The profiler inspects a CSV before ingestion and produces a JSON quality report.
+Official ONSV workbook URLs are registered in `data/sources/onsv.json`.
 
-Run from the repository root:
+```bash
+python -m pipelines.ingestion.onsv sync
+```
+
+This downloads the primary crash/person workbooks to `data/raw/onsv/` and writes a workbook inventory under `data/interim/onsv/`.
+
+## ONSV pedestrian events
+
+After ingestion, build the normalized event-level table for fatal crashes involving pedestrians in Metropolitan Lima:
+
+```bash
+python -m pipelines.processing.onsv
+```
+
+The output is `data/processed/onsv/lima_pedestrian_fatal_crashes.csv`.
+
+## CSV profiling
+
+The generic CSV profiler inspects a dataset before modeling:
 
 ```bash
 python -m pipelines.profiling path/to/source.csv --output reports/source-profile.json
@@ -29,4 +47,4 @@ The report includes:
 - temporal candidates that reach the parse-confidence threshold;
 - quality warnings that require review.
 
-The profiler is diagnostic and does not modify source data.
+Profiling is diagnostic and does not modify source data.
