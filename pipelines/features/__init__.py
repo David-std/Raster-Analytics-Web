@@ -8,10 +8,19 @@ from pipelines.features.coverage import (
     build_grid_units,
     profile_source_coverage,
 )
-from pipelines.features.transform import FeatureValue, line_length_density, point_density
+from pipelines.features.transform import (
+    CategorizedGeometry,
+    FeatureComposition,
+    FeatureValue,
+    line_length_density,
+    point_density,
+    polygon_category_composition,
+)
 
 __all__ = [
     "AnalysisUnit",
+    "CategorizedGeometry",
+    "FeatureComposition",
     "FeatureCoverageReport",
     "FeatureValue",
     "SourceCoverageSemantics",
@@ -19,5 +28,6 @@ __all__ = [
     "build_grid_units",
     "line_length_density",
     "point_density",
+    "polygon_category_composition",
     "profile_source_coverage",
 ]
