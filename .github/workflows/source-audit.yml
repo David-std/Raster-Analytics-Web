@@ -37,6 +37,9 @@ jobs:
           python -m pipelines.profiling \
             /tmp/lima-pedestrian-fatal-crashes.csv \
             --output /tmp/onsv-pedestrian-profile.json
+          python -m pipelines.profiling.onsv_quality \
+            /tmp/lima-pedestrian-fatal-crashes.csv \
+            --output /tmp/onsv-pedestrian-quality.json
       - name: Print audit summary
         run: |
           cat /tmp/source-readiness.json
@@ -46,19 +49,29 @@ jobs:
 
           arcgis = json.loads(Path('/tmp/arcgis-profiles.json').read_text())
           print(json.dumps({
-              'arcgis_layers': len(arcgis['profiles']),
-              'arcgis_errors': [
-                  {'source_id': p['source_id'], 'error': p['error']}
-                  for p in arcgis['profiles'] if p['error']
+              'arcgis_layers': [
+                  {
+                      'source_id': p['source_id'],
+                      'name': p['name'],
+                      'feature_count': p['feature_count'],
+                      'geometry_type': p['geometry_type'],
+                      'distinct_values': p['distinct_values'],
+                      'error': p['error'],
+                  }
+                  for p in arcgis['profiles']
               ],
-          }, indent=2))
+          }, indent=2, ensure_ascii=False))
           profile = json.loads(Path('/tmp/onsv-pedestrian-profile.json').read_text())
+          quality = json.loads(Path('/tmp/onsv-pedestrian-quality.json').read_text())
           print(json.dumps({
               'onsv_rows': profile['row_count'],
               'onsv_duplicate_rows': profile['duplicate_row_count'],
               'onsv_temporal_candidates': profile['temporal_candidates'],
               'onsv_coordinate_profile': profile['coordinate_profile'],
-          }, indent=2))
+              'onsv_year_coverage': quality['year_coverage'],
+              'onsv_crash_class_distribution': quality['crash_class_distribution'],
+              'onsv_district_coverage': quality['district_coverage'],
+          }, indent=2, ensure_ascii=False))
           PY
       - uses: actions/upload-artifact@v4
         with:
@@ -68,4 +81,5 @@ jobs:
             /tmp/arcgis-profiles.json
             /tmp/onsv-inventory.json
             /tmp/onsv-pedestrian-profile.json
+            /tmp/onsv-pedestrian-quality.json
           if-no-files-found: error
