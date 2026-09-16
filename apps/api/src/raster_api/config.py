@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     risk_provider: str = "mock"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
+    cors_origins: list[str] = ["http://localhost:5173"]
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

@@ -4,19 +4,17 @@ Aplicación web para el análisis espaciotemporal del riesgo de atropello peaton
 
 ## Estado actual
 
-`scaffold v0`
+`mock vertical slice v0`
 
-La base se está construyendo para evolucionar sin acoplar la aplicación a una implementación concreta del modelo:
+La base está diseñada para evolucionar sin acoplar la aplicación a una implementación concreta del modelo:
 
 ```text
 MockRiskProvider -> BaselineRiskProvider -> CNNRNNRiskProvider
 ```
 
-**Scaffold**, **mock** y **baseline** no son sinónimos:
-
-- **Scaffold**: estructura ejecutable del proyecto y contratos entre componentes.
+- **Scaffold**: estructura ejecutable y contratos entre componentes.
 - **Mock**: implementación sintética para probar integración sin datos/modelo reales.
-- **Baseline**: primer modelo real de referencia, construido después del perfilamiento de datos.
+- **Baseline**: primer modelo real de referencia, construido después del perfilamiento.
 
 ## Flujo conceptual
 
@@ -33,10 +31,25 @@ RiskProvider
 API
           |
           v
-Mapa + filtros + comparación
+Mapa + filtros + detalle + comparación
 ```
 
-El proyecto no asume todavía que la salida sea una probabilidad ni una predicción futura. La unidad espacial, unidad temporal, definición operativa del riesgo y configuración CNN-RNN siguen abiertas hasta perfilamiento y benchmarking.
+El proyecto no asume todavía que la salida sea una probabilidad ni una predicción futura. La unidad espacial, unidad temporal, definición operativa del riesgo, baseline y configuración CNN-RNN siguen abiertas hasta perfilamiento y benchmarking.
+
+## Mock vertical slice
+
+La rama de integración contiene un flujo ejecutable con:
+
+- catálogo DEMO de puntos representativos en Lima;
+- periodos DEMO;
+- `MockRiskProvider` determinístico;
+- API de metadata, mapa y comparación;
+- frontend React/TypeScript;
+- mapa Leaflet;
+- filtro por periodo, selección, detalle y comparación;
+- trazabilidad del provider/modelo/dataset activo.
+
+**Nada del catálogo o de los valores DEMO constituye evidencia del proyecto.** Los puntos no fijan la futura unidad espacial y los valores sintéticos no son probabilidades, predicciones ni niveles reales de riesgo.
 
 ## GitFlow
 
@@ -44,11 +57,11 @@ El proyecto no asume todavía que la salida sea una probabilidad ni una predicci
 - `develop`: integración.
 - `feature/*`: trabajo aislado.
 - `release/*`: preparación de entregas.
-- `hotfix/*`: correcciones urgentes de producción/entrega estable.
+- `hotfix/*`: correcciones urgentes.
 
 El trabajo normal entra primero a `develop` mediante PR. `main` se reserva para cortes estables.
 
-## API scaffold
+## Ejecutar API
 
 Requisitos: Python 3.12+.
 
@@ -59,20 +72,43 @@ pip install -e ".[dev]"
 uvicorn raster_api.main:app --app-dir apps/api/src --reload
 ```
 
-Endpoints iniciales:
+Endpoints actuales:
 
 - `GET /health`
 - `GET /model/metadata`
+- `GET /metadata/spatial-units`
+- `GET /metadata/periods`
 - `GET /risk?spatial_unit=...&period=...`
+- `GET /risk/map?period=...`
 - `POST /risk/compare`
 
-Todos los resultados actuales provienen de `MockRiskProvider` y deben tratarse únicamente como DEMO/MOCK.
+## Ejecutar frontend
+
+Con la API corriendo en `http://localhost:8000`:
+
+```bash
+cd apps/web
+npm install
+npm run dev
+```
+
+La interfaz estará disponible en `http://localhost:5173`.
 
 ## Calidad
+
+Backend:
 
 ```bash
 ruff check .
 pytest
 ```
 
-La documentación de arquitectura está en `docs/architecture/architecture-v0.md`.
+Frontend:
+
+```bash
+cd apps/web
+npm run typecheck
+npm run build
+```
+
+La documentación de arquitectura está en `docs/architecture/`.
