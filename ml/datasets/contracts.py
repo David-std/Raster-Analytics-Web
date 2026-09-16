@@ -64,7 +64,7 @@ class FeatureDefinition:
     can_be_exposure_offset: bool = False
 
     @classmethod
-    def from_dict(cls, raw: dict[str, Any]) -> "FeatureDefinition":
+    def from_dict(cls, raw: dict[str, Any]) -> FeatureDefinition:
         feature = cls(
             id=str(raw["id"]),
             description=str(raw["description"]),
@@ -86,7 +86,9 @@ class FeatureDefinition:
             raise ValueError(f"feature {self.id}: minimum_lag_periods must be non-negative")
         if self.temporal_semantics is TemporalSemantics.LAGGED:
             if self.minimum_lag_periods < 1:
-                raise ValueError(f"feature {self.id}: lagged features require at least one period lag")
+                raise ValueError(
+                    f"feature {self.id}: lagged features require at least one period lag"
+                )
         elif self.minimum_lag_periods != 0:
             raise ValueError(
                 f"feature {self.id}: minimum_lag_periods is only valid for lagged features"
@@ -121,7 +123,7 @@ class TargetDefinition:
     required_feature_ids: tuple[str, ...] = ()
 
     @classmethod
-    def from_dict(cls, raw: dict[str, Any]) -> "TargetDefinition":
+    def from_dict(cls, raw: dict[str, Any]) -> TargetDefinition:
         target = cls(
             id=str(raw["id"]),
             description=str(raw["description"]),
@@ -142,7 +144,8 @@ class TargetDefinition:
             raise ValueError(f"target {self.id}: presentation indices cannot be training labels")
         if self.exposure_mode is not ExposureMode.NONE and not self.required_feature_ids:
             raise ValueError(
-                f"target {self.id}: exposure-normalized targets must name required exposure features"
+                f"target {self.id}: exposure-normalized targets must name required "
+                "exposure features"
             )
 
 
@@ -154,7 +157,7 @@ class ContractCatalog:
     target_definitions: tuple[TargetDefinition, ...]
 
     @classmethod
-    def from_dict(cls, raw: dict[str, Any]) -> "ContractCatalog":
+    def from_dict(cls, raw: dict[str, Any]) -> ContractCatalog:
         catalog = cls(
             version=int(raw["version"]),
             analytical_grain=str(raw["analytical_grain"]),
@@ -215,7 +218,8 @@ class ContractCatalog:
                 ]
                 if blocked:
                     raise ValueError(
-                        f"target {target.id}: active target depends on unavailable features {blocked}"
+                        f"target {target.id}: active target depends on unavailable "
+                        f"features {blocked}"
                     )
 
     def require_feature_for_dataset(self, feature_id: str) -> FeatureDefinition:
