@@ -32,7 +32,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("boundary", help="Lima district boundary GeoJSON.")
     parser.add_argument("--config", required=True, help="Feature coverage source config JSON.")
-    parser.add_argument("--source-dir", required=True, help="Directory containing source snapshots.")
+    parser.add_argument(
+        "--source-dir",
+        required=True,
+        help="Directory containing source snapshots.",
+    )
     parser.add_argument("--output", required=True, help="Coverage report JSON path.")
     parser.add_argument("--grid-sizes", default="500,1000,2000")
     parser.add_argument("--support", help="Optional structural support GeoJSON.")
