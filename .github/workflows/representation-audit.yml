@@ -1,8 +1,6 @@
 name: Representation audit
 
 on:
-  push:
-    branches: [analysis/spatiotemporal-representation]
   workflow_dispatch:
 
 jobs:
