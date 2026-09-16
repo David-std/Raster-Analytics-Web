@@ -47,6 +47,48 @@ def _write_boundary(path) -> None:
     path.write_text(json.dumps(payload), encoding="utf-8")
 
 
+def _write_support(path) -> None:
+    payload = {
+        "type": "FeatureCollection",
+        "crs": {"type": "name", "properties": {"name": "EPSG:4326"}},
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {"distrito": "ALFA", "Anio": 2021},
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [-77.10, -12.10],
+                            [-77.05, -12.10],
+                            [-77.05, -12.00],
+                            [-77.10, -12.00],
+                            [-77.10, -12.10],
+                        ]
+                    ],
+                },
+            },
+            {
+                "type": "Feature",
+                "properties": {"distrito": "GAMMA", "Anio": 2021},
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [-77.20, -12.10],
+                            [-77.15, -12.10],
+                            [-77.15, -12.00],
+                            [-77.20, -12.00],
+                            [-77.20, -12.10],
+                        ]
+                    ],
+                },
+            },
+        ],
+    }
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+
 def _write_events(path) -> None:
     fieldnames = [
         "crash_id",
@@ -146,3 +188,50 @@ def test_representation_report_preserves_population_and_scope_distinctions(tmp_p
     assert strict["assigned_events"] == 2
     assert broad["zero_event_ratio"] > 0.9
     assert report["grid_boundary_sensitivity"]
+
+
+def test_structural_support_is_filtered_and_does_not_hide_event_attrition(tmp_path) -> None:
+    boundary = tmp_path / "boundary.geojson"
+    support = tmp_path / "support.geojson"
+    events = tmp_path / "events.csv"
+    _write_boundary(boundary)
+    _write_support(support)
+    _write_events(events)
+
+    report = run_representation_experiment(
+        events,
+        boundary,
+        grid_sizes=(5000,),
+        temporal_kinds=("month",),
+        support_geojson=support,
+        support_source_crs="EPSG:4326",
+    )
+
+    assert report["support_mask"]["input_feature_count"] == 2
+    assert report["support_mask"]["retained_feature_count"] == 1
+    assert report["support_mask"]["excluded_district_count"] == 1
+    assert report["support_mask"]["retained_districts"] == ["ALFA"]
+    assert report["support_mask"]["year_values"] == ["2021"]
+
+    full = next(
+        item
+        for item in report["results"]
+        if item["window_id"] == "complete_calendar_years_2021_2024"
+        and item["population"] == "pedestrian_linked_fatal"
+        and item["spatial_representation"] == "grid_5000m_base"
+        and item["temporal_representation"] == "month"
+    )
+    masked = next(
+        item
+        for item in report["results"]
+        if item["window_id"] == "complete_calendar_years_2021_2024"
+        and item["population"] == "pedestrian_linked_fatal"
+        and item["spatial_representation"] == "grid_5000m_zoning_support_base"
+        and item["temporal_representation"] == "month"
+    )
+
+    assert masked["spatial_units"] < full["spatial_units"]
+    assert full["assigned_events"] == 3
+    assert masked["assigned_events"] == 1
+    assert masked["unassigned_events"] == 2
+    assert masked["event_assignment_ratio"] == 0.333333
