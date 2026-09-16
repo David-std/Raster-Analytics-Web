@@ -1,0 +1,90 @@
+name: Representation audit
+
+on:
+  push:
+    branches: [analysis/spatiotemporal-representation]
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install --upgrade pip && pip install -e ".[dev]"
+      - name: Snapshot INEI Lima district boundaries
+        run: >-
+          python -m pipelines.ingestion.arcgis
+          https://geoservidorperu.minam.gob.pe/arcgis/rest/services/GEOLOMAS_final/MapServer/0
+          --output /tmp/lima-districts.geojson
+          --report /tmp/lima-districts-snapshot.json
+          --timeout 45
+      - name: Build ONSV pedestrian-linked fatal outcome layer
+        run: |
+          python -m pipelines.ingestion.onsv sync \
+            --output-dir /tmp/onsv \
+            --report /tmp/onsv-inventory.json
+          python -m pipelines.processing.onsv \
+            --raw-dir /tmp/onsv \
+            --output /tmp/lima-pedestrian-fatal-crashes.csv
+      - name: Run representation experiment
+        run: >-
+          python -m pipelines.representation
+          /tmp/lima-pedestrian-fatal-crashes.csv
+          /tmp/lima-districts.geojson
+          --output /tmp/representation-report.json
+          --grid-sizes 250,500,1000,2000
+          --temporal-kinds month,iso_week,day,daypart_6h
+      - name: Print compact evidence summary
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path('/tmp/representation-report.json').read_text())
+          print(json.dumps({
+              'selection_status': report['selection_status'],
+              'boundary': report['boundary'],
+              'district_assignment_audit': report['district_assignment_audit'],
+              'event_count_loaded': report['event_count_loaded'],
+              'strict_atropello_count_loaded': report['strict_atropello_count_loaded'],
+              'blocked_spatial_candidates': report['blocked_spatial_candidates'],
+          }, indent=2, ensure_ascii=False))
+
+          primary = [
+              item for item in report['results']
+              if item['window_id'] == 'complete_calendar_years_2021_2024'
+              and item['population'] == 'pedestrian_linked_fatal'
+              and item['spatial_representation'] in {
+                  'district',
+                  'grid_250m_base',
+                  'grid_500m_base',
+                  'grid_1000m_base',
+                  'grid_2000m_base',
+              }
+          ]
+          compact = [{
+              'spatial': item['spatial_representation'],
+              'temporal': item['temporal_representation'],
+              'units': item['spatial_units'],
+              'periods': item['periods'],
+              'cells': item['unit_period_cells'],
+              'assigned_events': item['assigned_events'],
+              'zero_event_ratio': item['zero_event_ratio'],
+              'p95': item['events_per_cell_p95'],
+              'max': item['events_per_cell_max'],
+          } for item in primary]
+          print(json.dumps(compact, indent=2, ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p2-representation-audit
+          path: |
+            /tmp/lima-districts-snapshot.json
+            /tmp/lima-districts.geojson
+            /tmp/onsv-inventory.json
+            /tmp/representation-report.json
+          if-no-files-found: error
