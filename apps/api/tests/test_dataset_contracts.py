@@ -1,9 +1,8 @@
 import json
 from pathlib import Path
 
-import pytest
-
 from ml import datasets as ds
+import pytest
 
 
 CATALOG_PATH = Path("data/features/catalog.json")
