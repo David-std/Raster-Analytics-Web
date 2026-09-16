@@ -4,7 +4,7 @@ import csv
 import hashlib
 import unicodedata
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from pipelines.profiling.models import ColumnProfile, CoordinateProfile, DatasetProfile
@@ -325,7 +325,7 @@ def profile_csv(
     )
     return DatasetProfile(
         source=str(csv_path),
-        generated_at_utc=datetime.now(timezone.utc).isoformat(),
+        generated_at_utc=datetime.now(UTC).isoformat(),
         file_size_bytes=csv_path.stat().st_size,
         sha256=_sha256(csv_path),
         delimiter=chosen_delimiter,
