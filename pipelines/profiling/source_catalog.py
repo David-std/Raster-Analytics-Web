@@ -26,6 +26,11 @@ _REQUIRED_ROLE_GROUPS = {
     "geometry": {"analysis_geometry"},
     "temporal_context": {"temporal_context"},
 }
+_EXPOSURE_ROLES = {
+    "pedestrian_exposure": ("pedestrian_exposure", "pedestrian_exposure_proxy"),
+    "traffic_exposure": ("traffic_exposure", "traffic_exposure_proxy"),
+}
+_RESOLVED_STATES = {"READY", "READY_DIRECT", "READY_WITH_PROXY"}
 
 
 @dataclass(frozen=True)
@@ -102,38 +107,76 @@ def load_source_catalog(path: str | Path) -> tuple[dict[str, Any], list[SourceRe
     return payload, records
 
 
+def _summary_item(record: SourceRecord) -> dict[str, str]:
+    return {
+        "id": record.source_id,
+        "status": record.status,
+        "evidence_state": record.evidence_state,
+    }
+
+
+def _is_accepted_real(record: SourceRecord) -> bool:
+    return record.status == "ACCEPTED" and record.evidence_state == "PROVEN_WITH_REAL_SOURCE"
+
+
+def _exposure_state(group: str, records: list[SourceRecord]) -> tuple[str, dict[str, Any]]:
+    direct_role, proxy_role = _EXPOSURE_ROLES[group]
+    direct = [record for record in records if direct_role in record.model_roles]
+    proxies = [record for record in records if proxy_role in record.model_roles]
+    accepted_direct = [record for record in direct if _is_accepted_real(record)]
+    accepted_proxy = [record for record in proxies if _is_accepted_real(record)]
+
+    if accepted_direct:
+        state = "READY_DIRECT"
+    elif accepted_proxy:
+        state = "READY_WITH_PROXY"
+    elif direct or proxies:
+        state = "RESEARCH_REQUIRED"
+    else:
+        state = "BLOCKED"
+
+    return state, {
+        "direct_sources": [_summary_item(record) for record in direct],
+        "proxy_sources": [_summary_item(record) for record in proxies],
+    }
+
+
 def build_readiness_summary(records: list[SourceRecord]) -> dict[str, Any]:
-    """Summarize source qualification without pretending candidate data is model-ready."""
+    """Summarize source fitness without turning source existence into model readiness."""
     role_sources: dict[str, dict[str, Any]] = {}
     for group, accepted_roles in _REQUIRED_ROLE_GROUPS.items():
-        matches = [
-            {
-                "id": record.source_id,
-                "status": record.status,
-                "evidence_state": record.evidence_state,
+        matching_records = [
+            record for record in records if accepted_roles.intersection(record.model_roles)
+        ]
+        matches = [_summary_item(record) for record in matching_records]
+
+        if group in _EXPOSURE_ROLES:
+            state, exposure_detail = _exposure_state(group, matching_records)
+            role_sources[group] = {
+                "state": state,
+                "sources": matches,
+                **exposure_detail,
             }
-            for record in records
-            if accepted_roles.intersection(record.model_roles)
-        ]
-        accepted = [
-            item
-            for item in matches
-            if item["status"] == "ACCEPTED" and item["evidence_state"] == "PROVEN_WITH_REAL_SOURCE"
-        ]
-        if group == "outcome":
-            state = "READY" if accepted else "BLOCKED"
+            continue
+
+        accepted = [record for record in matching_records if _is_accepted_real(record)]
+        blocked = [record for record in matching_records if record.status == "BLOCKED"]
+        if accepted and blocked:
+            # A known unresolved source gap for the same analytical role means the
+            # available layer must not be mistaken for full-scope coverage.
+            state = "PARTIAL_SCOPE"
         elif accepted:
             state = "READY"
-        elif matches:
+        elif matching_records:
             state = "RESEARCH_REQUIRED"
         else:
             state = "BLOCKED"
         role_sources[group] = {"state": state, "sources": matches}
 
-    blockers = [
+    unresolved = [
         group
         for group, result in role_sources.items()
-        if result["state"] in {"BLOCKED", "RESEARCH_REQUIRED"}
+        if result["state"] not in _RESOLVED_STATES
     ]
     return {
         "source_count": len(records),
@@ -142,8 +185,8 @@ def build_readiness_summary(records: list[SourceRecord]) -> dict[str, Any]:
             sorted(Counter(record.evidence_state for record in records).items())
         ),
         "role_readiness": role_sources,
-        "model_ready": not blockers,
-        "unresolved_role_groups": blockers,
+        "model_ready": not unresolved,
+        "unresolved_role_groups": unresolved,
     }
 
 
