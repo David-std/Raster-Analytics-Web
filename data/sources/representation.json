@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "purpose": "Sources used only to evaluate spatial representation and project-boundary assignment.",
+  "sources": [
+    {
+      "id": "inei_lima_district_boundaries_2017_via_minam",
+      "publisher": "Instituto Nacional de Estadística e Informática (INEI), served by MINAM GeoServidor",
+      "status": "CANDIDATE",
+      "evidence_state": "PLANNED",
+      "roles": ["project_boundary", "district_reporting_geometry", "representation_experiment_input"],
+      "layer_url": "https://geoservidorperu.minam.gob.pe/arcgis/rest/services/GEOLOMAS_final/MapServer/0",
+      "published_scope": "Límite de los distritos de Lima Metropolitana (INEI, 2017)",
+      "geometry_type": "polygon",
+      "expected_districts": 43,
+      "district_field": "NOMBDIST",
+      "province_field": "NOMBPROV",
+      "projected_analysis_crs": "EPSG:32718",
+      "limitations": [
+        "Administrative geometry vintage is 2017.",
+        "Suitable for boundary/reporting experiments; it does not preselect district as the final model unit.",
+        "A newer official boundary may replace it only after equivalent coverage and identifiers are verified."
+      ]
+    }
+  ]
+}
