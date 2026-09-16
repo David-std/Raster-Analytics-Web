@@ -19,7 +19,7 @@ Risk model
 FastAPI
     |
     v
-React + Leaflet
+React geospatial application
 ```
 
 The web application supports period filtering, map exploration, area selection, and side-by-side comparison. The model layer is isolated from the API so the scoring implementation can evolve without changing the client contract.
@@ -31,7 +31,7 @@ apps/api        FastAPI backend
 apps/web        React + TypeScript frontend
 pipelines       Data ingestion, profiling, and processing utilities
 data            Source registry and data documentation
-docs            Architecture documentation
+docs            Product and architecture documentation
 ```
 
 ## Run the API
@@ -95,4 +95,7 @@ npm run typecheck
 npm run build
 ```
 
-See `docs/architecture/architecture.md` for the application structure.
+## Product and architecture documentation
+
+- `docs/product-development-specification.md` defines the evidence-driven data, ML, architecture, UX, validation, and implementation gates.
+- `docs/architecture/architecture.md` describes the current high-level application structure and responsibility boundaries.
