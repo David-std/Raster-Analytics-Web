@@ -10,6 +10,8 @@ from urllib.request import Request, urlopen
 
 from pipelines.profiling.source_catalog import load_source_catalog
 
+_DEFAULT_DISTINCT_FIELDS = ("Anio", "Ciudad", "distrito")
+
 
 @dataclass(frozen=True)
 class ArcGISLayerProfile:
@@ -117,7 +119,7 @@ def profile_arcgis_layer(
     distinct_fields: tuple[str, ...] = (),
     timeout: int = 30,
 ) -> ArcGISLayerProfile:
-    """Profile ArcGIS metadata, count, WGS84 extent, and selected low-cardinality fields."""
+    """Profile ArcGIS metadata, count, WGS84 extent, and selected coverage fields."""
     try:
         metadata = _json_request(_metadata_url(layer_url), timeout)
         count_payload = _json_request(_count_url(layer_url), timeout)
@@ -151,14 +153,16 @@ def profile_arcgis_layer(
                 if isinstance(field.get("name"), str) and field.get("name")
             }
 
-        safe_distinct_fields = tuple(field for field in distinct_fields if field in available_fields)
+        requested_fields = distinct_fields or _DEFAULT_DISTINCT_FIELDS
+        safe_distinct_fields = tuple(field for field in requested_fields if field in available_fields)
         distinct_values, distinct_value_errors = _query_distinct_values(
             layer_url,
             safe_distinct_fields,
             timeout,
         )
-        for missing_field in sorted(set(distinct_fields) - available_fields):
-            distinct_value_errors[missing_field] = "Field not present in layer metadata"
+        if distinct_fields:
+            for missing_field in sorted(set(distinct_fields) - available_fields):
+                distinct_value_errors[missing_field] = "Field not present in layer metadata"
 
         query_formats = metadata.get("supportedQueryFormats")
         supported_query_formats = []
