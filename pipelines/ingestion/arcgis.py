@@ -87,7 +87,10 @@ def _object_id_field(metadata: dict[str, Any]) -> str | None:
     return None
 
 
-def _effective_batch_size(metadata: dict[str, Any], requested: int | None) -> tuple[int, int | None]:
+def _effective_batch_size(
+    metadata: dict[str, Any],
+    requested: int | None,
+) -> tuple[int, int | None]:
     if requested is not None and requested < 1:
         raise ValueError("batch_size must be positive")
     raw_limit = metadata.get("maxRecordCount")
