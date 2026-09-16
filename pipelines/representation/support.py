@@ -68,6 +68,28 @@ def _geojson_crs(payload: dict[str, Any]) -> str | None:
     return name if isinstance(name, str) and name else None
 
 
+def _valid_geometry(
+    geometry_payload: dict[str, Any],
+    transformer: Transformer | None,
+) -> BaseGeometry | None:
+    """Parse one external geometry and fail closed when coordinates are malformed.
+
+    Some public ArcGIS layers can contain null coordinate members even when a feature has a geometry
+    object. Those records are source-quality findings, not a reason to abort the entire experiment.
+    """
+    try:
+        geometry = shape(geometry_payload)
+        if geometry.is_empty or not geometry.is_valid:
+            return None
+        if transformer is not None:
+            geometry = transform(transformer.transform, geometry)
+        if geometry.is_empty or not geometry.is_valid:
+            return None
+        return geometry
+    except (TypeError, ValueError, IndexError):
+        return None
+
+
 def load_support_mask(
     geojson_path: str | Path,
     *,
@@ -103,6 +125,7 @@ def load_support_mask(
 
     for feature in features:
         if not isinstance(feature, dict):
+            invalid_geometry_count += 1
             continue
         properties = feature.get("properties")
         geometry_payload = feature.get("geometry")
@@ -118,12 +141,10 @@ def load_support_mask(
             excluded_districts[district] += 1
             continue
 
-        geometry = shape(geometry_payload)
-        if geometry.is_empty or not geometry.is_valid:
+        geometry = _valid_geometry(geometry_payload, transformer)
+        if geometry is None:
             invalid_geometry_count += 1
             continue
-        if transformer is not None:
-            geometry = transform(transformer.transform, geometry)
         retained.append(geometry)
         retained_districts.add(district)
 
