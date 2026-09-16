@@ -1,16 +1,16 @@
-# P2 spatial-temporal representation experiments
+# Spatial-temporal representation experiments
 
-Status: **evidence in progress; no representation selected**
+Status: **live evidence captured; candidate set narrowed but final representation not selected**
 
-This document records how candidate spatial and temporal units are measured before the project
-freezes a model-ready representation. The purpose of P2 is not to make a CNN-RNN fit whatever
-unit is easiest to code. It is to expose sparsity, coverage, assignment loss, boundary effects and
-sequence length so the later target and model design have defensible inputs.
+This document records how candidate spatial and temporal units behave before a model-ready
+representation is frozen. The purpose is not to make a CNN-RNN fit whatever unit is easiest to code.
+It is to expose sparsity, coverage, assignment loss, boundary effects, sequence length and source
+support so the later target, feature and model design have defensible inputs.
 
-## 1. Inputs inherited from P1
+## 1. Inputs inherited from source qualification
 
-P1 established that the current ONSV normalized event layer is a real official fatal-crash outcome
-layer, but not a complete citywide pedestrian-risk dataset. Two outcome populations remain open:
+The current normalized ONSV event layer is a real official fatal-crash outcome layer, but it is not a
+complete citywide pedestrian-risk dataset. Two outcome populations remain intentionally open:
 
 ```text
 pedestrian_linked_fatal
@@ -20,42 +20,89 @@ strict_fatal_atropello
   pedestrian-linked fatal crash whose recorded class contains ATROPELLO
 ```
 
-P2 measures both populations. It does not choose one.
+The experiment measures both populations. It does not choose one.
 
-The primary like-for-like diagnostic window is `2021-01-01` through `2024-12-31`. The current
-2025 detailed ONSV source is partial, so an additional source-cutoff window may be reported only as
-a sensitivity/coverage diagnostic. It is never treated as a complete calendar year.
+The primary like-for-like diagnostic window is `2021-01-01` through `2024-12-31`. The current 2025
+detailed ONSV publication is partial, so 2025 is used only as a source-cutoff sensitivity window and
+is never treated as a complete calendar year.
+
+The live audit loaded:
+
+```text
+pedestrian-linked fatal events        897
+strict fatal ATROPELLO events         839
+complete-window events (2021-2024)    842
+```
+
+All 897 event coordinates were assigned to the 43-district project boundary, and the geometric
+district assignment produced zero mismatches against the normalized ONSV district value.
 
 ## 2. Project-boundary geometry
 
-The first executable boundary candidate is the public layer:
+The executable boundary source is:
 
 ```text
 Límite de los distritos de Lima Metropolitana (INEI, 2017)
+served through MINAM GeoServidor
 https://geoservidorperu.minam.gob.pe/arcgis/rest/services/GEOLOMAS_final/MapServer/0
 ```
 
-The repository snapshots the layer as WGS84 GeoJSON and records the snapshot hash. Metric spatial
-operations use `EPSG:32718` (WGS 84 / UTM zone 18S).
+Metric spatial operations use `EPSG:32718` (WGS 84 / UTM zone 18S). The live snapshot contains the
+43 project districts and measures approximately `2641.889 km²` before any urban-support filtering.
 
-This geometry is used to test project-boundary and district assignment. Its use does **not** mean
-that district has been selected as the final model unit. A newer boundary may replace it only after
-coverage and identifier compatibility are proven.
+This geometry is used for project-boundary validation, district assignment and representation
+experiments. It does **not** select district as the final model unit. A newer official boundary may
+replace it after equivalent coverage and identifier compatibility are proven.
 
-## 3. Spatial candidates currently executable
+## 3. Structural urban-support diagnostic
+
+A full administrative boundary includes large peripheral areas that are not equivalent to observed
+urban activity. To quantify that effect without fabricating pedestrian exposure, the experiment also
+uses the qualified 2021 urban-zoning polygon layer as a **structural support mask**.
+
+The live snapshot contained `87,858` polygons. After filtering to the project scope:
+
+```text
+retained polygons                         87,379
+retained project districts                    43
+excluded out-of-scope polygons               479
+  Ventanilla                                  255
+  Callao                                      171
+  Chilca                                       50
+  Carmen de la Legua y Reynoso                  3
+```
+
+The ArcGIS geometry carries an extra ordinate that is not needed by the analysis and may be null.
+`87,379` retained geometries required deterministic normalization to XY before Shapely parsing. This
+is treated as source-shape normalization, not silent repair of the analytical coordinates.
+
+The support mask means only:
+
+```text
+candidate spatial cell intersects qualified mapped urban structure
+```
+
+It does **not** mean:
+
+```text
+pedestrian exposure > 0
+traffic exposure > 0
+risk > 0
+safe/risky location
+```
+
+The mask therefore cannot be used as a risk denominator or target.
+
+## 4. Spatial candidates measured
 
 ### District
 
-District is measured as a coarse reference representation because it is interpretable and provides
-a useful upper bound on event density. It is not presumed to be sufficiently local for the product.
-
-The experiment spatially assigns every outcome coordinate to a district polygon and compares that
-assignment with the district name present in the ONSV source. Mismatches and unassigned points are
-reported explicitly.
+District is a coarse reference representation. It is interpretable and provides an upper bound on
+outcome density, but it is not presumed sufficiently local for the analytical product.
 
 ### Regular grid
 
-The initial grid experiment measures cell sizes:
+The live experiment measured regular cells of:
 
 ```text
 250 m
@@ -64,27 +111,22 @@ The initial grid experiment measures cell sizes:
 2000 m
 ```
 
-Each size is evaluated twice: once on a base UTM lattice and once with a half-cell x/y shift. The
-shift is not another candidate product design. It is a boundary-sensitivity test. A representation
-whose apparent density changes materially when the grid origin moves is less stable than its raw
-cell count may suggest.
+Each size was evaluated on a base UTM lattice and on a half-cell x/y shift. The shifted lattice is a
+boundary-sensitivity test, not a second product representation.
 
-Grid cells remain regular rather than being geometrically clipped into irregular pieces. Cells that
-intersect the Lima boundary are retained and marked as full or boundary-intersecting cells. This
-preserves the lattice semantics that a conventional CNN would require.
+Grid cells remain regular rather than being clipped into irregular fragments, preserving the raster
+semantics that a conventional spatial convolution would require.
 
 ### Road segment and intersection/node
 
-These candidates remain blocked at this point. The qualified public `Tipos Vias Transporte` layer
-is not yet proven to be a complete Lima street network with stable segment identity, and the
-signalized-intersection layer is not equivalent to a complete street-intersection topology.
+These remain blocked. No complete, qualified Lima urban road network with stable segment identity
+has yet been accepted, and the signalized-intersection layer is not equivalent to a complete street
+intersection topology. The project will not manufacture a graph from partial infrastructure data
+merely to make every candidate executable.
 
-P2 will not manufacture network nodes or pretend a partial infrastructure layer is a complete road
-graph merely to make every candidate executable.
+## 5. Temporal candidates measured
 
-## 4. Temporal candidates
-
-The first experiment measures:
+The live experiment measured:
 
 ```text
 month
@@ -93,67 +135,138 @@ day
 6-hour daypart
 ```
 
-The 6-hour representation is encoded as four chronological periods per day (`00`, `06`, `12`,
-`18`). It is intentionally fine-grained so the experiment can quantify whether the additional
-sequence resolution is mostly empty.
+The 6-hour representation contains four chronological periods per day (`00`, `06`, `12`, `18`). It
+is intentionally fine enough to reveal whether additional temporal resolution produces mostly empty
+unit-period combinations.
 
-No interval is selected from convenience. A temporal candidate must later be considered together
-with covariate availability and specialist usefulness, not only outcome density.
+No temporal interval is selected from convenience. Covariate availability, target semantics and
+specialist usefulness must also be considered.
 
-## 5. Metrics
+## 6. Live density evidence
 
-Every spatial x temporal x outcome-population x analysis-window combination reports:
+For the primary `2021-2024` window and the broader `pedestrian_linked_fatal` population, the monthly
+results were:
 
-- spatial-unit count;
-- period count;
-- total unit-period cells;
-- assigned and unassigned events;
-- occupied unit-period cells;
-- zero-event cell ratio;
-- mean events per cell;
-- nearest-rank p50, p90, p95 and p99 event counts;
-- maximum event count per cell;
-- mean events per non-zero cell;
-- spatial units with at least one event;
-- periods with at least one event.
+| Spatial representation | Spatial units | Assigned events | Assignment ratio | Zero-event unit-periods |
+| --- | ---: | ---: | ---: | ---: |
+| District | 43 | 842 | 100.000% | 70.4942% |
+| 250 m grid, full boundary | 43,373 | 842 | 100.000% | 99.9599% |
+| 250 m grid, zoning support | 32,966 | 841 | 99.8812% | 99.9473% |
+| 500 m grid, full boundary | 11,111 | 842 | 100.000% | 99.8436% |
+| 500 m grid, zoning support | 8,494 | 841 | 99.8812% | 99.7957% |
+| 1000 m grid, full boundary | 2,899 | 842 | 100.000% | 99.4071% |
+| 1000 m grid, zoning support | 2,238 | 841 | 99.8812% | 99.2329% |
+| 2000 m grid, full boundary | 783 | 842 | 100.000% | 97.8847% |
+| 2000 m grid, zoning support | 620 | 842 | 100.000% | 97.3286% |
 
-Grid pairs also report half-shift minus base deltas for unit count, zero-event ratio, occupied cells
-and maximum events in a cell.
+The structural mask removes roughly `21-24%` of grid units, depending on cell size, while preserving
+nearly every observed event. At 250-1000 m one of the 842 complete-window events falls outside the
+mapped zoning support; the 2000 m cells still intersect support and retain all 842 events. That event
+loss is a source-coverage finding and must not be silently erased.
 
-These are profiling measurements, not model acceptance thresholds. P2 does not invent a maximum
-acceptable zero ratio before seeing the observed distributions.
+The support mask improves the measured sparsity, but it does **not** make the fine grids dense. This
+is important: the extreme sparsity is not explained mainly by mountains or peripheral administrative
+area. It is fundamentally driven by the rarity of the current fatal-only outcome relative to the
+space-time lattice.
 
-## 6. Important interpretation rules
+## 7. Temporal-resolution evidence
 
-A zero outcome in a unit-period cell means only that the selected outcome layer contains no event in
-that cell and period. It does not mean zero pedestrian exposure or zero risk.
+Even the coarse district representation becomes sparse as temporal resolution increases:
 
-A cell outside a candidate feature source's coverage must later remain distinct from an observed
-feature value of zero. P2 representation metrics do not fill missing exposure or built-environment
-layers with zeros.
+| Temporal representation | District-period cells | Zero-event ratio | Maximum events in one cell |
+| --- | ---: | ---: | ---: |
+| Month | 2,064 | 70.4942% | 5 |
+| ISO week | 9,030 | 91.3953% | 3 |
+| Day | 62,823 | 98.6741% | 2 |
+| 6-hour daypart | 251,292 | 99.6673% | 2 |
 
-The regular grid is naturally compatible with image-like convolution, but that convenience alone
-cannot select it. District is easy to interpret, but that convenience cannot select it either.
+For a 500 m full-boundary grid, daily resolution creates `16,233,171` unit-period cells for the same
+842 observed events and yields a `99.9948%` zero-event ratio. A 250 m x 6-hour representation would
+create more than `253 million` unit-period cells with the current event layer.
 
-## 7. Reproducibility
+These measurements do not impose a universal acceptable sparsity threshold. They demonstrate that a
+fine daily/daypart target built only from the current fatal-event layer would be dominated by zeros
+and would require a different target formulation, substantially denser outcome data, carefully
+designed negative sampling/likelihood treatment, or a coarser representation.
 
-The executable report is produced with:
+## 8. Grid-origin sensitivity
 
-```bash
-python -m pipelines.representation \
-  data/processed/onsv/lima_pedestrian_fatal_crashes.csv \
-  /path/to/versioned-lima-districts.geojson \
-  --output /tmp/representation-report.json
+The half-cell shift test shows that moving the lattice origin has very small effects on the headline
+zero-event ratios. For the monthly complete-window population, zero-ratio deltas are near zero across
+250-2000 m grids. Occupied-cell counts change only slightly.
+
+This is useful negative evidence: the observed sparsity is not an artifact of having chosen a lucky
+or unlucky grid origin.
+
+A small support-boundary interaction remains visible at 2000 m, where the shifted zoning-supported
+grid can lose one assigned event. Therefore any later selected support mask must retain explicit
+assignment-loss auditing.
+
+## 9. Interpretation and narrowed candidate set
+
+No final spatial/temporal representation is selected here. However, the live evidence is sufficient
+to narrow what should be carried into the next feature/target stage.
+
+### Carry forward as primary analytical candidates
+
+```text
+district x month
+1000 m grid x month
+2000 m grid x month
 ```
 
-The live evidence workflow additionally snapshots the boundary source and ONSV workbooks before
-running the experiment. Generated source data and reports remain CI artifacts rather than being
-committed as if they were hand-authored evidence.
+`district x month` remains an interpretable reference and reporting baseline. `1000 m` and `2000 m`
+monthly grids remain the main raster candidates because they preserve regular spatial structure
+while avoiding the most extreme expansion of the finer lattices.
 
-## 8. P2 decision gate
+### Carry forward conditionally
 
-P2 may narrow the candidate set when the report provides enough evidence to explain why a
-representation is unsuitable or worth carrying into feature/target experiments. Final selection is
-still deferred until candidate covariate coverage and the target formulation are known.
+```text
+500 m grid x month
+```
 
-Therefore the output field `selection_status` must remain `NOT_SELECTED` during this stage.
+It remains useful for sensitivity analysis and could become viable if a broader non-fatal outcome
+source or stronger exposure/feature formulation materially changes the information density.
+
+### Defer with the current fatal-only outcome
+
+```text
+250 m grid
+ISO week
+day
+6-hour daypart
+```
+
+These are not declared universally invalid. They are deferred because the current outcome evidence
+is too sparse to justify making them the primary model-ready lattice now. They may be re-opened if
+future source qualification changes the event density or target semantics.
+
+Road-segment and intersection/node representations remain `BLOCKED`, not rejected.
+
+## 10. Reproducibility and evidence state
+
+The live workflow snapshots the district boundary, urban-zoning support and ONSV source, then writes
+`representation-report.json` as an artifact. The successful live audit at commit
+`b0a984be4f595bdedefae7baa110287f836559ca` completed source acquisition, ONSV processing, the full
+representation experiment and artifact upload successfully.
+
+The audit is intentionally manual after evidence capture because external public servers should not
+become a mandatory availability dependency for every normal code commit.
+
+Normal CI continues to validate deterministic code, unit tests, lint, frontend typecheck and build.
+
+## 11. Decision gate before model-ready data
+
+The next stage must not train CNN/RNN candidates yet. It must first establish the feature and target
+contract for the surviving representations. At minimum that requires:
+
+- direct pedestrian exposure or a documented/validated exposure proxy strategy;
+- traffic/mobility exposure treatment;
+- built-environment feature coverage and missingness semantics;
+- outcome-population decision or explicit comparison protocol;
+- a risk target that is mathematically defined and not merely a renamed event count;
+- leakage-safe temporal windows and independent evaluation periods;
+- evidence that each feature can be joined at the selected spatial and temporal grain.
+
+Until those conditions are satisfied, `selection_status` remains `NOT_SELECTED` for the final
+model-ready representation.
