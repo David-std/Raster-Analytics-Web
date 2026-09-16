@@ -260,7 +260,9 @@ def _windows(events: list[Event]) -> list[AnalysisWindow]:
             start=date(2021, 1, 1),
             end=date(2024, 12, 31),
             role="PRIMARY_REPRESENTATION_DIAGNOSTIC",
-            note="Excludes the known partial 2025 source interval from like-for-like year coverage.",
+            note=(
+                "Excludes the known partial 2025 source interval from like-for-like year coverage."
+            ),
         )
     ]
     if observed_end > date(2024, 12, 31):
