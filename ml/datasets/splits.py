@@ -53,7 +53,7 @@ class TemporalSplit:
         return None
 
     @classmethod
-    def current_fatal_outcome_split(cls) -> "TemporalSplit":
+    def current_fatal_outcome_split(cls) -> TemporalSplit:
         return cls(
             train=DateWindow("train", "2021-01", "2022-12"),
             validation=DateWindow("validation", "2023-01", "2023-12"),
