@@ -36,6 +36,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--district-field", default="NOMBDIST")
     parser.add_argument("--province-field", default="NOMBPROV")
+    parser.add_argument("--support", type=Path)
+    parser.add_argument("--support-label", default="zoning_support")
+    parser.add_argument("--support-district-field", default="distrito")
+    parser.add_argument("--support-source-crs", default="EPSG:32718")
+    parser.add_argument("--support-year-field", default="Anio")
     return parser
 
 
@@ -48,6 +53,11 @@ def main() -> None:
         temporal_kinds=args.temporal_kinds,
         district_field=args.district_field,
         province_field=args.province_field or None,
+        support_geojson=args.support,
+        support_label=args.support_label,
+        support_district_field=args.support_district_field,
+        support_source_crs=args.support_source_crs,
+        support_year_field=args.support_year_field or None,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
