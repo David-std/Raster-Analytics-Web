@@ -1,11 +1,11 @@
-name: ONSV source audit
+name: ONSV source validation
 
 on:
   push:
     branches: [data/onsv-ingestion]
 
 jobs:
-  audit:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,127 +19,46 @@ jobs:
           python -m pipelines.ingestion.onsv sync
           --output-dir /tmp/onsv
           --report /tmp/onsv-source-inventory.json
-      - name: Audit Lima pedestrian coverage
+      - name: Build normalized pedestrian event dataset
+        run: >-
+          python -m pipelines.processing.onsv
+          --raw-dir /tmp/onsv
+          --output /tmp/lima-pedestrian-fatal-crashes.csv
+      - name: Summarize normalized dataset
         run: |
           python - <<'PY'
-          from collections import Counter
-          from datetime import date, datetime
+          import csv
           import json
+          from collections import Counter
           from pathlib import Path
 
-          from openpyxl import load_workbook
+          path = Path('/tmp/lima-pedestrian-fatal-crashes.csv')
+          with path.open(encoding='utf-8', newline='') as source:
+              rows = list(csv.DictReader(source))
 
-          ROOT = Path('/tmp/onsv')
-
-          def text(value):
-              if value is None:
-                  return ''
-              return ' '.join(str(value).split()).strip()
-
-          def upper(value):
-              return text(value).upper()
-
-          def read_table(path, sheet_name):
-              workbook = load_workbook(path, read_only=True, data_only=True)
-              worksheet = workbook[sheet_name]
-              header = [text(value) for value in next(worksheet.iter_rows(min_row=5, max_row=5, values_only=True))]
-              records = []
-              for row in worksheet.iter_rows(min_row=6, values_only=True):
-                  record = {key: value for key, value in zip(header, row) if key}
-                  if text(record.get('CÓDIGO SINIESTRO')):
-                      records.append(record)
-              workbook.close()
-              return records
-
-          def parse_year(value):
-              if isinstance(value, (datetime, date)):
-                  return str(value.year)
-              raw = text(value)
-              for separator in ('/', '-', ' '):
-                  parts = raw.split(separator)
-                  for part in reversed(parts):
-                      if len(part) == 4 and part.isdigit():
-                          return part
-              return ''
-
-          def valid_coordinate(record):
-              try:
-                  latitude = float(record.get('COORDENADAS LATITUD'))
-                  longitude = float(record.get('COORDENADAS LONGITUD'))
-              except (TypeError, ValueError):
-                  return False
-              return -90 <= latitude <= 90 and -180 <= longitude <= 180
-
-          crashes = read_table(ROOT / 'fatal_crashes_2021_2025.xlsx', 'SINIESTROS')
-          people = read_table(ROOT / 'people_fatal_crashes_2021_2025.xlsx', 'PERSONAS INVOLUCRADAS')
-
-          lima_crashes = [
-              row for row in crashes
-              if upper(row.get('DEPARTAMENTO')) == 'LIMA' and upper(row.get('PROVINCIA')) == 'LIMA'
-          ]
-          lima_people = [
-              row for row in people
-              if upper(row.get('DEPARTAMENTO')) == 'LIMA' and upper(row.get('PROVINCIA')) == 'LIMA'
-          ]
-          pedestrians = [row for row in lima_people if 'PEAT' in upper(row.get('TIPO PERSONA'))]
-
-          crash_by_code = {text(row.get('CÓDIGO SINIESTRO')): row for row in lima_crashes}
-          pedestrian_codes = {text(row.get('CÓDIGO SINIESTRO')) for row in pedestrians}
-          pedestrian_event_codes = pedestrian_codes & set(crash_by_code)
-          pedestrian_events = [crash_by_code[code] for code in pedestrian_event_codes]
-
-          joined_people_codes = {text(row.get('CÓDIGO SINIESTRO')) for row in lima_people}
-          coordinate_events = sum(valid_coordinate(row) for row in pedestrian_events)
-
-          audit = {
-              'national_fatal_crashes': len(crashes),
-              'national_people_rows': len(people),
-              'lima_fatal_crashes': len(lima_crashes),
-              'lima_people_rows': len(lima_people),
-              'lima_crashes_with_people_match': len(set(crash_by_code) & joined_people_codes),
-              'lima_crashes_with_valid_coordinates': sum(valid_coordinate(row) for row in lima_crashes),
-              'lima_pedestrian_rows': len(pedestrians),
-              'lima_pedestrian_crashes': len(pedestrian_event_codes),
-              'lima_pedestrian_crashes_with_valid_coordinates': coordinate_events,
-              'lima_pedestrian_crashes_by_year': dict(sorted(Counter(
-                  parse_year(row.get('FECHA SINIESTRO')) for row in pedestrian_events
-              ).items())),
-              'lima_pedestrian_crashes_by_district': dict(Counter(
-                  text(row.get('DISTRITO')) for row in pedestrian_events
-              ).most_common()),
-              'lima_pedestrian_crashes_by_class': dict(Counter(
-                  text(row.get('CLASE SINIESTRO')) for row in pedestrian_events
-              ).most_common()),
-              'lima_crashes_by_class': dict(Counter(
-                  text(row.get('CLASE SINIESTRO')) for row in lima_crashes
-              ).most_common()),
-              'lima_person_types': dict(Counter(
-                  text(row.get('TIPO PERSONA')) for row in lima_people
-              ).most_common()),
-              'lima_person_severity': dict(Counter(
-                  text(row.get('GRAVEDAD')) for row in lima_people
-              ).most_common()),
-              'lima_pedestrian_severity': dict(Counter(
-                  text(row.get('GRAVEDAD')) for row in pedestrians
-              ).most_common()),
-              'lima_pedestrian_situation': dict(Counter(
-                  text(row.get('SITUACIÓN DE PERSONA')) for row in pedestrians
-              ).most_common()),
-              'lima_road_types': dict(Counter(
-                  text(row.get('TIPO DE VÍA')) for row in lima_crashes
-              ).most_common()),
+          dates = [row['crash_date'] for row in rows if row['crash_date']]
+          valid_coordinates = sum(
+              bool(row['latitude']) and bool(row['longitude']) for row in rows
+          )
+          summary = {
+              'rows': len(rows),
+              'first_date': min(dates) if dates else None,
+              'last_date': max(dates) if dates else None,
+              'valid_coordinate_rows': valid_coordinates,
+              'by_year': dict(sorted(Counter(row['year'] for row in rows).items())),
+              'pedestrian_fatalities': sum(int(row['pedestrian_fatalities']) for row in rows),
+              'pedestrian_injured': sum(int(row['pedestrian_injured']) for row in rows),
           }
-
-          Path('/tmp/onsv-source-audit.json').write_text(
-              json.dumps(audit, indent=2, ensure_ascii=False) + '\n',
+          Path('/tmp/onsv-processing-summary.json').write_text(
+              json.dumps(summary, indent=2) + '\n',
               encoding='utf-8',
           )
-          print(json.dumps(audit, indent=2, ensure_ascii=False))
+          print(json.dumps(summary, indent=2))
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: onsv-source-audit
+          name: onsv-source-validation
           path: |
             /tmp/onsv-source-inventory.json
-            /tmp/onsv-source-audit.json
+            /tmp/onsv-processing-summary.json
           if-no-files-found: error
