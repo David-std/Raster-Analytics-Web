@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "purpose": "Geometry-coverage evidence for candidate feature transformations; no source absence is promoted to numeric zero unless completeness is separately proven.",
+  "sources": [
+    {
+      "source_id": "minam_dot_signalized_intersections",
+      "feature_id": "signalized_intersection_density",
+      "file": "signalized-intersections.geojson",
+      "source_crs": "EPSG:32718",
+      "coverage_semantics": "unresolved"
+    },
+    {
+      "source_id": "minam_dot_transit_stops",
+      "feature_id": "transit_stop_density",
+      "file": "transit-stops.geojson",
+      "source_crs": "EPSG:32718",
+      "coverage_semantics": "unresolved"
+    },
+    {
+      "source_id": "minam_dot_transport_routes",
+      "feature_id": "transport_route_density",
+      "file": "transport-routes.geojson",
+      "source_crs": "EPSG:32718",
+      "coverage_semantics": "unresolved"
+    },
+    {
+      "source_id": "minam_dot_pedestrian_crossings",
+      "feature_id": "pedestrian_crossing_density",
+      "file": "pedestrian-crossings.geojson",
+      "source_crs": "EPSG:32718",
+      "coverage_semantics": "unresolved"
+    },
+    {
+      "source_id": "minam_dot_zoning",
+      "feature_id": "zoning_land_use_composition",
+      "file": "zoning.geojson",
+      "source_crs": "EPSG:32718",
+      "coverage_semantics": "unresolved"
+    }
+  ]
+}
