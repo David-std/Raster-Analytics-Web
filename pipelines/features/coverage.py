@@ -204,31 +204,21 @@ def _nearest_rank(values: list[int], percentile: float) -> int:
     return ordered[rank - 1]
 
 
-def profile_source_coverage(
+def profile_loaded_source_coverage(
     *,
     source_id: str,
     feature_id: str,
     representation_id: str,
     units: list[AnalysisUnit],
-    source_path: str | Path,
-    source_crs: str,
+    source_geometries: list[BaseGeometry],
+    source_profile: SourceGeometryProfile,
     coverage_semantics: SourceCoverageSemantics = SourceCoverageSemantics.UNRESOLVED,
 ) -> FeatureCoverageReport:
-    """Measure observed source geometry without inventing zero semantics.
-
-    A unit with no intersecting feature is only a true zero when the source has separately proven
-    complete coverage. Otherwise it remains coverage-unresolved and cannot become a numeric zero in
-    the canonical analytical dataset.
-    """
+    """Measure already-loaded source geometry against one analytical representation."""
     if not units:
         raise ValueError("coverage profiling requires at least one analytical unit")
 
-    source_geometries, source_profile = load_source_geometries(
-        source_path,
-        source_crs=source_crs,
-    )
-    unit_geometries = [unit.geometry for unit in units]
-    tree = STRtree(unit_geometries)
+    tree = STRtree([unit.geometry for unit in units])
     counts = [0 for _ in units]
     intersecting_source_features = 0
 
@@ -264,4 +254,35 @@ def profile_source_coverage(
         features_per_observed_unit_p95=_nearest_rank(observed_counts, 0.95),
         features_per_observed_unit_max=max(observed_counts, default=0),
         source_geometry=source_profile,
+    )
+
+
+def profile_source_coverage(
+    *,
+    source_id: str,
+    feature_id: str,
+    representation_id: str,
+    units: list[AnalysisUnit],
+    source_path: str | Path,
+    source_crs: str,
+    coverage_semantics: SourceCoverageSemantics = SourceCoverageSemantics.UNRESOLVED,
+) -> FeatureCoverageReport:
+    """Load and profile a source without inventing zero semantics.
+
+    A unit with no intersecting feature is only a true zero when the source has separately proven
+    complete coverage. Otherwise it remains coverage-unresolved and cannot become a numeric zero in
+    the canonical analytical dataset.
+    """
+    source_geometries, source_profile = load_source_geometries(
+        source_path,
+        source_crs=source_crs,
+    )
+    return profile_loaded_source_coverage(
+        source_id=source_id,
+        feature_id=feature_id,
+        representation_id=representation_id,
+        units=units,
+        source_geometries=source_geometries,
+        source_profile=source_profile,
+        coverage_semantics=coverage_semantics,
     )
