@@ -1,0 +1,71 @@
+name: Source audit
+
+on:
+  push:
+    branches: [data/source-profiling]
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install --upgrade pip && pip install -e ".[dev]"
+      - name: Validate source catalog
+        run: >-
+          python -m pipelines.profiling.source_catalog
+          data/sources/qualification.json
+          --output /tmp/source-readiness.json
+      - name: Probe registered ArcGIS layers
+        run: >-
+          python -m pipelines.profiling.arcgis_profiler
+          data/sources/qualification.json
+          --output /tmp/arcgis-profiles.json
+          --timeout 45
+      - name: Build and profile ONSV pedestrian outcome layer
+        run: |
+          python -m pipelines.ingestion.onsv sync \
+            --output-dir /tmp/onsv \
+            --report /tmp/onsv-inventory.json
+          python -m pipelines.processing.onsv \
+            --raw-dir /tmp/onsv \
+            --output /tmp/lima-pedestrian-fatal-crashes.csv
+          python -m pipelines.profiling \
+            /tmp/lima-pedestrian-fatal-crashes.csv \
+            --output /tmp/onsv-pedestrian-profile.json
+      - name: Print audit summary
+        run: |
+          cat /tmp/source-readiness.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          arcgis = json.loads(Path('/tmp/arcgis-profiles.json').read_text())
+          print(json.dumps({
+              'arcgis_layers': len(arcgis['profiles']),
+              'arcgis_errors': [
+                  {'source_id': p['source_id'], 'error': p['error']}
+                  for p in arcgis['profiles'] if p['error']
+              ],
+          }, indent=2))
+          profile = json.loads(Path('/tmp/onsv-pedestrian-profile.json').read_text())
+          print(json.dumps({
+              'onsv_rows': profile['row_count'],
+              'onsv_duplicate_rows': profile['duplicate_row_count'],
+              'onsv_temporal_candidates': profile['temporal_candidates'],
+              'onsv_coordinate_profile': profile['coordinate_profile'],
+          }, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p1-source-audit
+          path: |
+            /tmp/source-readiness.json
+            /tmp/arcgis-profiles.json
+            /tmp/onsv-inventory.json
+            /tmp/onsv-pedestrian-profile.json
+          if-no-files-found: error
