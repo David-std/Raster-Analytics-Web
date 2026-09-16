@@ -193,16 +193,31 @@ def _build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("list", help="List registered ONSV data sources.")
 
-    sync_parser = subparsers.add_parser("sync", help="Download sources and write an XLSX inventory.")
-    sync_parser.add_argument("--all", action="store_true", help="Include supporting/context sources.")
-    sync_parser.add_argument("--force", action="store_true", help="Replace existing downloads.")
+    sync_parser = subparsers.add_parser(
+        "sync",
+        help="Download sources and write an XLSX inventory.",
+    )
+    sync_parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Include supporting/context sources.",
+    )
+    sync_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace existing downloads.",
+    )
     sync_parser.add_argument("--output-dir", default=str(_DEFAULT_RAW_DIR))
     sync_parser.add_argument("--report", default=str(_DEFAULT_REPORT))
 
     inspect_parser = subparsers.add_parser("inspect", help="Inspect already downloaded workbooks.")
     inspect_parser.add_argument("--input-dir", default=str(_DEFAULT_RAW_DIR))
     inspect_parser.add_argument("--report", default=str(_DEFAULT_REPORT))
-    inspect_parser.add_argument("--all", action="store_true", help="Include supporting/context sources.")
+    inspect_parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Include supporting/context sources.",
+    )
     return parser
 
 
