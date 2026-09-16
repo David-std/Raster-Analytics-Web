@@ -1,5 +1,6 @@
 import json
 from io import BytesIO
+from urllib.parse import parse_qs
 
 import pytest
 
@@ -20,16 +21,24 @@ class _Response:
         return self._stream.read()
 
 
+def _form(request) -> dict[str, list[str]]:
+    if request.data is None:
+        return {}
+    return parse_qs(request.data.decode("utf-8"))
+
+
 def test_arcgis_snapshot_fetches_sorted_id_batches(monkeypatch, tmp_path) -> None:
-    seen_urls = []
+    seen_forms = []
 
     def fake_urlopen(request, timeout):
         assert timeout == 10
         url = request.full_url
-        seen_urls.append(url)
+        form = _form(request)
+        if form:
+            seen_forms.append(form)
         if "returnIdsOnly=true" in url:
             return _Response({"objectIds": [3, 1, 2]})
-        if "/query?" not in url:
+        if not form:
             return _Response(
                 {
                     "name": "Districts",
@@ -37,7 +46,7 @@ def test_arcgis_snapshot_fetches_sorted_id_batches(monkeypatch, tmp_path) -> Non
                     "objectIdField": "OBJECTID",
                 }
             )
-        if "objectIds=1%2C2" in url:
+        if form["objectIds"] == ["1,2"]:
             return _Response(
                 {
                     "type": "FeatureCollection",
@@ -47,7 +56,7 @@ def test_arcgis_snapshot_fetches_sorted_id_batches(monkeypatch, tmp_path) -> Non
                     ],
                 }
             )
-        if "objectIds=3" in url:
+        if form["objectIds"] == ["3"]:
             return _Response(
                 {
                     "type": "FeatureCollection",
@@ -56,7 +65,7 @@ def test_arcgis_snapshot_fetches_sorted_id_batches(monkeypatch, tmp_path) -> Non
                     ],
                 }
             )
-        raise AssertionError(url)
+        raise AssertionError(form)
 
     monkeypatch.setattr(arcgis, "urlopen", fake_urlopen)
     output = tmp_path / "snapshot.geojson"
@@ -75,16 +84,17 @@ def test_arcgis_snapshot_fetches_sorted_id_batches(monkeypatch, tmp_path) -> Non
     assert report.batch_size == 2
     assert len(report.sha256) == 64
     assert [item["properties"]["OBJECTID"] for item in payload["features"]] == [1, 2, 3]
-    assert sum("objectIds=" in url for url in seen_urls) == 2
+    assert [form["objectIds"][0] for form in seen_forms] == ["1,2", "3"]
 
 
 def test_arcgis_snapshot_rejects_server_side_truncation(monkeypatch, tmp_path) -> None:
     def fake_urlopen(request, timeout):
         assert timeout == 10
         url = request.full_url
+        form = _form(request)
         if "returnIdsOnly=true" in url:
             return _Response({"objectIds": [1, 2]})
-        if "/query?" not in url:
+        if not form:
             return _Response({"name": "Layer", "maxRecordCount": 2})
         return _Response(
             {
