@@ -19,7 +19,7 @@
       "role": "direct_exposure",
       "status": "BLOCKED",
       "temporal_semantics": "same_period",
-      "source_ids": ["atu_pmu_pedestrian_vehicle_counts"],
+      "source_ids": ["atu_pmu_2025_mobility_microdata"],
       "unit": "pedestrian movements or other source-defined ratio-scale exposure unit",
       "can_be_exposure_offset": true
     },
