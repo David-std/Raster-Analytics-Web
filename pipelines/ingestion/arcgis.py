@@ -19,6 +19,8 @@ class ArcGISSnapshotReport:
     requested_object_ids: int
     feature_count: int
     object_id_field: str | None
+    server_max_record_count: int | None
+    batch_size: int
     output: str
     sha256: str
 
@@ -74,6 +76,16 @@ def _object_id_field(metadata: dict[str, Any]) -> str | None:
     return None
 
 
+def _effective_batch_size(metadata: dict[str, Any], requested: int | None) -> tuple[int, int | None]:
+    if requested is not None and requested < 1:
+        raise ValueError("batch_size must be positive")
+    raw_limit = metadata.get("maxRecordCount")
+    server_limit = raw_limit if isinstance(raw_limit, int) and raw_limit > 0 else None
+    safe_server_limit = server_limit or 1000
+    desired = requested or safe_server_limit
+    return min(desired, safe_server_limit, 2000), server_limit
+
+
 def fetch_arcgis_geojson(
     layer_url: str,
     output_path: str | Path,
@@ -84,10 +96,11 @@ def fetch_arcgis_geojson(
     batch_size: int | None = None,
     timeout: int = 45,
 ) -> ArcGISSnapshotReport:
-    """Create a deterministic local GeoJSON snapshot from a queryable ArcGIS layer.
+    """Create a complete local GeoJSON snapshot from a queryable ArcGIS layer.
 
-    Object IDs are requested first and then fetched in sorted batches. This avoids silently
-    truncating layers at `maxRecordCount` and gives downstream profiling a stable feature set.
+    Object IDs are requested first and then fetched in sorted batches. Every batch is checked
+    against the requested ID count so a server-side record cap cannot silently create a partial
+    source snapshot.
     """
     if not layer_url.startswith("https://"):
         raise ValueError("ArcGIS source URL must use HTTPS")
@@ -101,11 +114,7 @@ def fetch_arcgis_geojson(
         raise ValueError("ArcGIS object-id query did not return an integer objectIds array")
 
     object_ids = sorted(set(raw_ids))
-    max_record_count = metadata.get("maxRecordCount")
-    default_batch_size = max_record_count if isinstance(max_record_count, int) else 1000
-    effective_batch_size = batch_size or max(1, min(default_batch_size, 2000))
-    if effective_batch_size < 1:
-        raise ValueError("batch_size must be positive")
+    effective_batch_size, server_limit = _effective_batch_size(metadata, batch_size)
 
     features: list[dict[str, Any]] = []
     for start in range(0, len(object_ids), effective_batch_size):
@@ -122,7 +131,19 @@ def fetch_arcgis_geojson(
         batch_features = payload.get("features")
         if not isinstance(batch_features, list):
             raise ValueError("ArcGIS GeoJSON query did not return a features array")
-        features.extend(feature for feature in batch_features if isinstance(feature, dict))
+        valid_features = [feature for feature in batch_features if isinstance(feature, dict)]
+        if len(valid_features) != len(batch):
+            raise ValueError(
+                "ArcGIS batch was truncated or incomplete: "
+                f"requested {len(batch)} IDs, received {len(valid_features)} features"
+            )
+        features.extend(valid_features)
+
+    if len(features) != len(object_ids):
+        raise ValueError(
+            "ArcGIS snapshot feature count does not match the object-id inventory: "
+            f"{len(features)} != {len(object_ids)}"
+        )
 
     feature_collection = {
         "type": "FeatureCollection",
@@ -130,7 +151,12 @@ def fetch_arcgis_geojson(
         "crs": {"type": "name", "properties": {"name": f"EPSG:{out_sr}"}},
         "features": features,
     }
-    rendered = json.dumps(feature_collection, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    rendered = json.dumps(
+        feature_collection,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     destination = Path(output_path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(rendered + "\n", encoding="utf-8")
@@ -143,6 +169,8 @@ def fetch_arcgis_geojson(
         requested_object_ids=len(object_ids),
         feature_count=len(features),
         object_id_field=_object_id_field(metadata),
+        server_max_record_count=server_limit,
+        batch_size=effective_batch_size,
         output=str(destination),
         sha256=digest,
     )
