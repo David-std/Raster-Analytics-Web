@@ -25,8 +25,17 @@ class ArcGISSnapshotReport:
     sha256: str
 
 
-def _request_json(url: str, timeout: int) -> dict[str, Any]:
-    request = Request(url, headers={"User-Agent": "Raster-Analytics-Web/arcgis-ingestion"})
+def _request_json(
+    url: str,
+    timeout: int,
+    *,
+    form: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    body = urlencode(form).encode("utf-8") if form is not None else None
+    headers = {"User-Agent": "Raster-Analytics-Web/arcgis-ingestion"}
+    if body is not None:
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
+    request = Request(url, data=body, headers=headers)
     with urlopen(request, timeout=timeout) as response:  # noqa: S310
         payload = json.loads(response.read().decode("utf-8"))
     if not isinstance(payload, dict):
@@ -45,21 +54,23 @@ def _ids_url(layer_url: str, where: str) -> str:
     return f"{layer_url.rstrip('/')}/query?{urlencode(params)}"
 
 
-def _features_url(
-    layer_url: str,
+def _features_endpoint(layer_url: str) -> str:
+    return f"{layer_url.rstrip('/')}/query"
+
+
+def _features_form(
     object_ids: list[int],
     *,
     out_fields: str,
     out_sr: int,
-) -> str:
-    params = {
+) -> dict[str, str]:
+    return {
         "objectIds": ",".join(str(value) for value in object_ids),
         "outFields": out_fields,
         "returnGeometry": "true",
         "outSR": str(out_sr),
         "f": "geojson",
     }
-    return f"{layer_url.rstrip('/')}/query?{urlencode(params)}"
 
 
 def _object_id_field(metadata: dict[str, Any]) -> str | None:
@@ -98,9 +109,9 @@ def fetch_arcgis_geojson(
 ) -> ArcGISSnapshotReport:
     """Create a complete local GeoJSON snapshot from a queryable ArcGIS layer.
 
-    Object IDs are requested first and then fetched in sorted batches. Every batch is checked
-    against the requested ID count so a server-side record cap cannot silently create a partial
-    source snapshot.
+    Object IDs are requested first and then fetched in sorted POST batches. POST avoids request-URI
+    limits on large object-ID lists. Every batch is checked against its requested ID count so a
+    server-side record cap cannot silently create a partial source snapshot.
     """
     if not layer_url.startswith("https://"):
         raise ValueError("ArcGIS source URL must use HTTPS")
@@ -120,13 +131,13 @@ def fetch_arcgis_geojson(
     for start in range(0, len(object_ids), effective_batch_size):
         batch = object_ids[start : start + effective_batch_size]
         payload = _request_json(
-            _features_url(
-                layer_url,
+            _features_endpoint(layer_url),
+            timeout,
+            form=_features_form(
                 batch,
                 out_fields=out_fields,
                 out_sr=out_sr,
             ),
-            timeout,
         )
         batch_features = payload.get("features")
         if not isinstance(batch_features, list):
