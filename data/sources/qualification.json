@@ -1,0 +1,424 @@
+{
+  "version": 2,
+  "checked_at": "2026-09-16",
+  "scope": {
+    "geography": "Province of Lima (43 districts); Callao excluded from analytical output",
+    "purpose": "Qualify source families for spatiotemporal pedestrian-collision risk analysis",
+    "rule": "A source can be useful without being suitable as a direct model feature. Status expresses analytical admissibility; evidence_state expresses what has actually been executed or verified."
+  },
+  "sources": [
+    {
+      "id": "onsv_fatal_crashes_2021_2025",
+      "publisher": "Observatorio Nacional de Seguridad Vial (ONSV)",
+      "category": "outcome",
+      "status": "ACCEPTED",
+      "evidence_state": "PROVEN_WITH_REAL_SOURCE",
+      "model_roles": ["outcome_event", "temporal_context"],
+      "access": {
+        "type": "manifest-reference",
+        "manifest": "data/sources/onsv.json",
+        "source_id": "fatal_crashes_2021_2025",
+        "landing_page": "https://www.onsv.gob.pe/datosabiertos"
+      },
+      "coverage": {
+        "geography": "National; filterable to Lima department/province",
+        "published_scope": "Fatal road crashes, 2021-2025 preliminary",
+        "observed_lima_pedestrian_linked_rows": 897,
+        "observed_date_end": "2025-04-02"
+      },
+      "grain": {"spatial": "geocoded crash event", "temporal": "event date/time"},
+      "limitations": [
+        "Fatal-crash scope only",
+        "The current detailed file is incomplete for calendar year 2025",
+        "Outcome events are not an exposure denominator",
+        "A linked person classified as PEATON is not semantically identical to a crash whose class is ATROPELLO"
+      ]
+    },
+    {
+      "id": "onsv_people_fatal_crashes_2021_2025",
+      "publisher": "Observatorio Nacional de Seguridad Vial (ONSV)",
+      "category": "outcome",
+      "status": "ACCEPTED",
+      "evidence_state": "PROVEN_WITH_REAL_SOURCE",
+      "model_roles": ["outcome_event"],
+      "access": {
+        "type": "manifest-reference",
+        "manifest": "data/sources/onsv.json",
+        "source_id": "people_fatal_crashes_2021_2025",
+        "landing_page": "https://www.onsv.gob.pe/datosabiertos"
+      },
+      "coverage": {
+        "geography": "National; filterable to Lima department/province",
+        "published_scope": "People involved in fatal road crashes, 2021-2025 preliminary"
+      },
+      "grain": {"spatial": "inherits crash location by crash id", "temporal": "inherits crash timestamp"},
+      "limitations": ["Only people involved in fatal crashes", "Not pedestrian exposure"]
+    },
+    {
+      "id": "onsv_vehicles_fatal_crashes_2021_2025",
+      "publisher": "Observatorio Nacional de Seguridad Vial (ONSV)",
+      "category": "event_vehicle_context",
+      "status": "AUXILIARY",
+      "evidence_state": "PROVEN_WITH_REAL_SOURCE",
+      "model_roles": ["event_vehicle_context"],
+      "access": {
+        "type": "manifest-reference",
+        "manifest": "data/sources/onsv.json",
+        "source_id": "vehicles_fatal_crashes_2021_2025",
+        "landing_page": "https://www.onsv.gob.pe/datosabiertos"
+      },
+      "coverage": {"geography": "National; linked to fatal crashes"},
+      "grain": {"spatial": "inherits crash location", "temporal": "inherits crash timestamp"},
+      "limitations": [
+        "Event-conditioned sample",
+        "Must not be used as ambient traffic exposure because only vehicles involved in fatal crashes are present"
+      ]
+    },
+    {
+      "id": "onsv_historical_crashes_2008_2025",
+      "publisher": "Observatorio Nacional de Seguridad Vial (ONSV)",
+      "category": "outcome_context",
+      "status": "AUXILIARY",
+      "evidence_state": "PROVEN_WITH_REAL_SOURCE",
+      "model_roles": ["temporal_context"],
+      "access": {
+        "type": "manifest-reference",
+        "manifest": "data/sources/onsv.json",
+        "source_id": "historical_crashes_2008_2025",
+        "landing_page": "https://www.onsv.gob.pe/datosabiertos"
+      },
+      "coverage": {
+        "geography": "National",
+        "published_scope": "Historical road-crash summary, 2008-2025 preliminary; 2025 January-October according to publisher"
+      },
+      "grain": {"spatial": "aggregate", "temporal": "annual/summary"},
+      "limitations": ["Not equivalent to the event-level detailed fatal-crash dataset"]
+    },
+    {
+      "id": "onsv_sratma_all_crash_viewer",
+      "publisher": "Ministerio de Transportes y Comunicaciones / ONSV",
+      "category": "outcome_research",
+      "status": "BLOCKED",
+      "evidence_state": "BLOCKED",
+      "model_roles": ["outcome_event"],
+      "access": {
+        "type": "public-interactive-viewer",
+        "landing_page": "https://sratma.mtc.gob.pe/SRATMA/mapa/"
+      },
+      "coverage": {
+        "geography": "National viewer with UBIGEO, year, date and accident-class filters",
+        "published_scope": "Traffic-crash alerts from multiple sources including PNP/ONSV/concessionaires"
+      },
+      "grain": {"spatial": "georeferenced alert in viewer", "temporal": "event timestamp/filterable dates"},
+      "limitations": [
+        "A stable documented machine-readable public export/API has not yet been proven",
+        "Viewer coverage/source completeness must be characterized before combining it with ONSV open files"
+      ],
+      "next_action": "Determine whether a reusable machine-readable endpoint or authorized export is available; this is the highest-priority route to broaden outcomes beyond fatal crashes."
+    },
+    {
+      "id": "minam_dot_pedestrian_crossings",
+      "publisher": "MINAM GeoServidor / Desarrollo Orientado al Transporte service",
+      "category": "built_environment",
+      "status": "AUXILIARY",
+      "evidence_state": "PROVEN_WITH_REAL_SOURCE",
+      "model_roles": ["built_environment"],
+      "access": {
+        "type": "arcgis-rest",
+        "landing_page": "https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/309"
+      },
+      "probe": {"type": "arcgis-layer", "url": "https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/309"},
+      "coverage": {
+        "geography": "Observed extent is a limited central portion of Lima, not all 43 districts",
+        "year_values": [2021],
+        "feature_count": 405,
+        "wgs84_extent": [-77.1099836602906, -12.099750893134845, -77.00335594319267, -11.97065635285807]
+      },
+      "grain": {"spatial": "point", "temporal": "2021 structural snapshot"},
+      "limitations": [
+        "Coverage is visibly narrower than the project geography",
+        "Absence outside the observed extent cannot be interpreted as absence of a crossing",
+        "Crossing presence does not measure pedestrian volume"
+      ]
+    },
+    {
+      "id": "minam_dot_signalized_intersections",
+      "publisher": "MINAM GeoServidor / Desarrollo Orientado al Transporte service",
+      "category": "built_environment",
+      "status": "CANDIDATE",
+      "evidence_state": "PROVEN_WITH_REAL_SOURCE",
+      "model_roles": ["built_environment"],
+      "access": {
+        "type": "arcgis-rest",
+        "landing_page": "https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/303"
+      },
+      "probe": {"type": "arcgis-layer", "url": "https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/303"},
+      "coverage": {
+        "geography": "Broad Lima extent; district-level completeness still requires spatial join",
+        "year_values": [2021],
+        "feature_count": 1421,
+        "wgs84_extent": [-77.16345803024875, -12.292865919138116, -76.6683935077912, -11.776334379559488]
+      },
+      "grain": {"spatial": "point", "temporal": "2021 structural snapshot"},
+      "limitations": ["Feature completeness by district has not yet been proven"]
+    },
+    {
+      "id": "minam_dot_transit_stops",
+      "publisher": "MINAM GeoServidor / Desarrollo Orientado al Transporte service",
+      "category": "mobility",
+      "status": "CANDIDATE",
+      "evidence_state": "PROVEN_WITH_REAL_SOURCE",
+      "model_roles": ["pedestrian_exposure_proxy", "built_environment"],
+      "access": {
+        "type": "arcgis-rest",
+        "landing_page": "https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/304"
+      },
+      "probe": {"type": "arcgis-layer", "url": "https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/304"},
+      "coverage": {
+        "geography": "Broad Lima extent; actual completeness requires spatial join",
+        "year_values": [2021],
+        "feature_count": 3262,
+        "wgs84_extent": [-77.15091200038887, -12.458550999676783, -76.6721850002029, -11.788492000009644]
+      },
+      "grain": {"spatial": "point/stop", "temporal": "2021 structural snapshot"},
+      "limitations": [
+        "Stop presence is not pedestrian count",
+        "Service frequency and passenger demand are not contained in this geometry layer"
+      ]
+    },
+    {
+      "id": "minam_dot_transport_routes",
+      "publisher": "MINAM GeoServidor / Desarrollo Orientado al Transporte service",
+      "category": "mobility",
+      "status": "CANDIDATE",
+      "evidence_state": "PROVEN_WITH_REAL_SOURCE",
+      "model_roles": ["traffic_exposure_proxy", "pedestrian_exposure_proxy", "built_environment"],
+      "access": {
+        "type": "arcgis-rest",
+        "landing_page": "https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/314"
+      },
+      "probe": {"type": "arcgis-layer", "url": "https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/314"},
+      "coverage": {
+        "geography": "Broad Lima transport-route extent",
+        "year_values": [2021],
+        "feature_count": 278,
+        "wgs84_extent": [-77.17612299956386, -12.240464999570431, -76.66715999977264, -11.759459999580368]
+      },
+      "grain": {"spatial": "polyline route", "temporal": "2021 structural snapshot"},
+      "limitations": ["Route geometry and nominal vehicle attributes are not measured traffic flow"]
+    },
+    {
+      "id": "minam_dot_road_types",
+      "publisher": "MINAM GeoServidor / Desarrollo Orientado al Transporte service",
+      "category": "built_environment",
+      "status": "CANDIDATE",
+      "evidence_state": "PROVEN_WITH_REAL_SOURCE",
+      "model_roles": ["built_environment", "analysis_geometry"],
+      "access": {
+        "type": "arcgis-rest",
+        "landing_page": "https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/315"
+      },
+      "probe": {"type": "arcgis-layer", "url": "https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/315"},
+      "coverage": {
+        "geography": "Broad Lima/Callao service extent; must be clipped to project boundary",
+        "year_values": [2021],
+        "feature_count": 349,
+        "wgs84_extent": [-77.1967665779594, -12.529520433545411, -76.64317557381139, -11.670289413935585]
+      },
+      "grain": {"spatial": "polyline", "temporal": "2021 structural snapshot"},
+      "limitations": ["Only 349 features; cannot be assumed to represent every urban street segment"]
+    },
+    {
+      "id": "minam_dot_vehicle_congestion",
+      "publisher": "MINAM GeoServidor / Desarrollo Orientado al Transporte service",
+      "category": "traffic_context",
+      "status": "AUXILIARY",
+      "evidence_state": "PROVEN_WITH_REAL_SOURCE",
+      "model_roles": ["traffic_exposure_proxy"],
+      "access": {
+        "type": "arcgis-rest",
+        "landing_page": "https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/316"
+      },
+      "probe": {"type": "arcgis-layer", "url": "https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/316"},
+      "coverage": {
+        "geography": "Small central-Lima extent",
+        "year_values": [2021],
+        "feature_count": 22,
+        "wgs84_extent": [-77.11096527529376, -12.103072503697902, -77.00907163531463, -11.96701398228475]
+      },
+      "grain": {"spatial": "polyline", "temporal": "2021 snapshot"},
+      "limitations": [
+        "Only 22 features in a limited central extent",
+        "Congestion class is not a vehicle-volume denominator",
+        "Must not be extrapolated citywide"
+      ]
+    },
+    {
+      "id": "minam_dot_zoning",
+      "publisher": "MINAM GeoServidor / Desarrollo Orientado al Transporte service",
+      "category": "built_environment",
+      "status": "CANDIDATE",
+      "evidence_state": "PROVEN_WITH_REAL_SOURCE",
+      "model_roles": ["built_environment", "analysis_geometry"],
+      "access": {
+        "type": "arcgis-rest",
+        "landing_page": "https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/331"
+      },
+      "probe": {"type": "arcgis-layer", "url": "https://geoservidorperu.minam.gob.pe/arcgis/rest/services/CS/Desarrollo_Orientado_a_Transporte/MapServer/331"},
+      "coverage": {
+        "geography": "Contains all 43 Lima districts plus out-of-scope neighboring districts that must be clipped",
+        "year_values": [2021],
+        "feature_count": 87858,
+        "wgs84_extent": [-77.1988271170903, -12.519349780851018, -76.66610745752696, -11.664745645946256]
+      },
+      "grain": {"spatial": "polygon/manzana-like zoning feature", "temporal": "2021 structural snapshot"},
+      "limitations": [
+        "Source includes Callao and neighboring areas outside the project boundary",
+        "Zoning polygons are contextual features, not automatically the final analytical spatial unit"
+      ]
+    },
+    {
+      "id": "mml_cycleways_2024",
+      "publisher": "Municipalidad Metropolitana de Lima (MML)",
+      "category": "built_environment",
+      "status": "CANDIDATE",
+      "evidence_state": "PLANNED",
+      "model_roles": ["built_environment"],
+      "access": {
+        "type": "open-data-portal",
+        "landing_page": "https://www.datosabiertos.gob.pe/dataset/ciclov%C3%ADas-existentes-en-lima-metropolitana-municipalidad-metropolitana-de-lima-mml"
+      },
+      "coverage": {"geography": "Published for 34 districts of Metropolitan Lima", "published": "2024-01-31"},
+      "grain": {"spatial": "cycleway segment/route record", "temporal": "snapshot"},
+      "limitations": ["Not citywide across all 43 districts", "Contextual rather than pedestrian exposure"]
+    },
+    {
+      "id": "inei_census_2017_redatam",
+      "publisher": "Instituto Nacional de Estadística e Informática (INEI)",
+      "category": "socioeconomic",
+      "status": "CANDIDATE",
+      "evidence_state": "PLANNED",
+      "model_roles": ["pedestrian_exposure_proxy", "built_environment"],
+      "access": {
+        "type": "official-census-platform",
+        "landing_page": "https://www.inei.gob.pe/estadisticas/censos/"
+      },
+      "coverage": {"geography": "National census; Lima available to fine census geography", "reference_year": "2017"},
+      "grain": {"spatial": "district/manzana through census tools", "temporal": "census snapshot"},
+      "limitations": [
+        "Static vintage",
+        "Resident population is not equivalent to pedestrian flow",
+        "Machine-readable extraction and geometry join must be proven before feature use"
+      ]
+    },
+    {
+      "id": "atu_pmu_2025_mobility_microdata",
+      "publisher": "Autoridad de Transporte Urbano para Lima y Callao (ATU)",
+      "category": "mobility_research",
+      "status": "BLOCKED",
+      "evidence_state": "BLOCKED",
+      "model_roles": ["pedestrian_exposure", "traffic_exposure"],
+      "access": {
+        "type": "official-plan-publication",
+        "landing_page": "https://www.gob.pe/institucion/atu/normas-legales/7530942-395-2025-atu-pe"
+      },
+      "coverage": {"geography": "Lima and Callao planning study", "reference_year": "2025 publication"},
+      "grain": {"spatial": "unknown for reusable microdata", "temporal": "unknown for reusable microdata"},
+      "limitations": [
+        "The published PMU volumes prove the study exists but do not prove reusable granular pedestrian/vehicle count microdata is publicly downloadable",
+        "Published reports cannot be silently converted into station-level exposure observations"
+      ],
+      "next_action": "Locate or request machine-readable pedestrian and vehicle count data with station/location and time metadata."
+    },
+    {
+      "id": "atu_metropolitano_station_validations",
+      "publisher": "Autoridad de Transporte Urbano para Lima y Callao (ATU)",
+      "category": "transit_demand",
+      "status": "CANDIDATE",
+      "evidence_state": "PLANNED",
+      "model_roles": ["pedestrian_exposure_proxy", "temporal_context"],
+      "access": {
+        "type": "official-open-data-portal",
+        "landing_page": "https://sistemas.protransporte.gob.pe/DatosAbiertos/Metropolitano"
+      },
+      "coverage": {"geography": "Metropolitano stations/corridor only"},
+      "grain": {"spatial": "station", "temporal": "weekly/monthly products depending on resource"},
+      "limitations": [
+        "Direct transit demand at stations is useful locally but is not a citywide pedestrian exposure surface",
+        "Resource schemas and historical coverage still require machine profiling"
+      ]
+    },
+    {
+      "id": "ositran_metro_lima_passenger_traffic",
+      "publisher": "Organismo Supervisor de la Inversión en Infraestructura de Transporte de Uso Público (OSITRAN)",
+      "category": "transit_demand",
+      "status": "AUXILIARY",
+      "evidence_state": "PLANNED",
+      "model_roles": ["pedestrian_exposure_proxy", "temporal_context"],
+      "access": {
+        "type": "national-open-data-portal",
+        "landing_page": "https://www.datosabiertos.gob.pe/dataset/tr%C3%A1fico-de-pasajeros-metro-de-lima-organismo-supervisor-de-la-inversi%C3%B3n-en-infraestructura"
+      },
+      "coverage": {"geography": "Metro de Lima infrastructure", "update_frequency": "monthly"},
+      "grain": {"spatial": "resource-dependent; must be profiled", "temporal": "monthly"},
+      "limitations": ["Rail demand covers only the serviced corridor and cannot be extrapolated to all Lima"]
+    },
+    {
+      "id": "mtc_road_network_2022_2025",
+      "publisher": "Ministerio de Transportes y Comunicaciones (MTC)",
+      "category": "road_network",
+      "status": "AUXILIARY",
+      "evidence_state": "PLANNED",
+      "model_roles": ["built_environment"],
+      "access": {
+        "type": "open-data-portal",
+        "landing_page": "https://www.datosabiertos.gob.pe/dataset/red-vial-nacional-del-sistema-nacional-de-carreteras-2022-2025-ministerio-de-transportes-y"
+      },
+      "coverage": {"geography": "National road network", "years": "2022-2025"},
+      "grain": {"spatial": "national-road segment/record", "temporal": "multi-year attributes"},
+      "limitations": ["National-road network is not a complete representation of Lima urban streets"]
+    },
+    {
+      "id": "mtc_toll_flow_2014_2026q1",
+      "publisher": "Ministerio de Transportes y Comunicaciones (MTC)",
+      "category": "traffic_context",
+      "status": "AUXILIARY",
+      "evidence_state": "PLANNED",
+      "model_roles": ["traffic_exposure_proxy", "temporal_context"],
+      "access": {
+        "type": "open-data-portal",
+        "landing_page": "https://www.datosabiertos.gob.pe/group/ministerio-de-transportes-y-comunicaciones?f%5B0%5D=field_resources%253Afield_format%3A14&sort_by=changed"
+      },
+      "coverage": {"geography": "National-road toll units", "years": "2014-2026 Q1"},
+      "grain": {"spatial": "toll station", "temporal": "reported flow period"},
+      "limitations": ["Too spatially coarse to represent citywide vehicle exposure in Lima"]
+    },
+    {
+      "id": "senamhi_lima_weather",
+      "publisher": "Servicio Nacional de Meteorología e Hidrología del Perú (SENAMHI)",
+      "category": "weather",
+      "status": "CANDIDATE",
+      "evidence_state": "PLANNED",
+      "model_roles": ["temporal_context"],
+      "access": {"type": "official-data-service", "landing_page": "https://www.senamhi.gob.pe/"},
+      "coverage": {"geography": "Lima-relevant stations/products; exact stations not yet fixed"},
+      "grain": {"spatial": "station/product dependent", "temporal": "station/product dependent"},
+      "limitations": ["Station selection, missingness and any interpolation method must be justified"]
+    },
+    {
+      "id": "osm_lima_network_pois",
+      "publisher": "OpenStreetMap contributors",
+      "category": "fallback_geospatial",
+      "status": "AUXILIARY",
+      "evidence_state": "PLANNED",
+      "model_roles": ["built_environment", "pedestrian_exposure_proxy", "analysis_geometry"],
+      "access": {"type": "public-geospatial-fallback", "landing_page": "https://www.openstreetmap.org/"},
+      "coverage": {"geography": "Lima; extract boundary must be versioned"},
+      "grain": {"spatial": "nodes/ways/relations", "temporal": "versioned snapshot"},
+      "limitations": [
+        "Community-maintained completeness varies by feature type and area",
+        "Use only where official layers are insufficient and retain snapshot/license provenance"
+      ]
+    }
+  ]
+}
