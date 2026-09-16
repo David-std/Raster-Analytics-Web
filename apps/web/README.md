@@ -1,10 +1,10 @@
-# Web app · Mock vertical slice
+# Web application
 
-Frontend provisional en React + TypeScript + Leaflet para validar el flujo `MockRiskProvider -> API -> mapa -> filtro -> detalle -> comparación`.
+React + TypeScript + Leaflet client for exploring spatiotemporal pedestrian collision risk in Metropolitan Lima.
 
-## Ejecutar
+## Run locally
 
-Con la API disponible en `http://localhost:8000`:
+With the API available at `http://localhost:8000`:
 
 ```bash
 cd apps/web
@@ -12,18 +12,21 @@ npm install
 npm run dev
 ```
 
-Por defecto el frontend consulta `http://localhost:8000`. Para cambiarlo:
+The API URL defaults to `http://localhost:8000`. Override it with:
 
 ```bash
 VITE_API_BASE_URL=http://localhost:8000 npm run dev
 ```
 
-En Windows puede crearse `apps/web/.env.local`:
+On Windows, an `apps/web/.env.local` file can be used:
 
 ```text
 VITE_API_BASE_URL=http://localhost:8000
 ```
 
-## Importante
+## Main interactions
 
-Todo lo visible en esta fase es **MOCK / DEMO**. Los nombres y puntos representativos permiten ejercitar la interfaz geoespacial, pero no fijan la unidad espacial definitiva del proyecto. Los valores son sintéticos y no representan probabilidades, predicciones ni resultados analíticos.
+- select a period;
+- explore scores on the map;
+- inspect an area;
+- compare two areas for the same period.

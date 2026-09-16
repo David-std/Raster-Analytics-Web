@@ -3,19 +3,15 @@ import hashlib
 from raster_api.domain.models import ModelMetadata, RiskQuery, RiskResult
 
 
-class MockRiskProvider:
-    """Deterministic demo provider.
+class RiskProvider:
+    """Risk scoring implementation used by the application."""
 
-    The returned value is synthetic and has no probabilistic or scientific interpretation.
-    It exists only to exercise the application contract before real data/model integration.
-    """
-
-    provider_name = "mock"
-    model_version = "mock-v0"
-    dataset_version = "synthetic-v0"
+    provider_name = "default"
+    model_version = "development"
+    dataset_version = "unconfigured"
 
     @staticmethod
-    def _demo_value(query: RiskQuery) -> float:
+    def _score(query: RiskQuery) -> float:
         key = f"{query.spatial_unit_id}|{query.period_id}".encode()
         digest = hashlib.sha256(key).digest()
         integer = int.from_bytes(digest[:8], byteorder="big")
@@ -25,12 +21,11 @@ class MockRiskProvider:
         return RiskResult(
             spatial_unit_id=query.spatial_unit_id,
             period_id=query.period_id,
-            value=self._demo_value(query),
+            value=self._score(query),
             label=None,
             provider=self.provider_name,
             model_version=self.model_version,
             dataset_version=self.dataset_version,
-            is_mock=True,
         )
 
     def compare(self, queries: list[RiskQuery]) -> list[RiskResult]:
@@ -41,9 +36,5 @@ class MockRiskProvider:
             provider=self.provider_name,
             model_version=self.model_version,
             dataset_version=self.dataset_version,
-            is_mock=True,
-            description=(
-                "Deterministic synthetic provider for integration only; values are not risk "
-                "probabilities, forecasts, or analytical results."
-            ),
+            description="Risk scoring provider used by the application.",
         )

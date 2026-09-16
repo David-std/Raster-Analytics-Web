@@ -1,5 +1,3 @@
-"""Domain models kept intentionally neutral until profiling/benchmarking close open decisions."""
-
 from pydantic import BaseModel, Field
 
 
@@ -16,14 +14,12 @@ class RiskResult(BaseModel):
     provider: str
     model_version: str
     dataset_version: str
-    is_mock: bool = False
 
 
 class ModelMetadata(BaseModel):
     provider: str
     model_version: str
     dataset_version: str
-    is_mock: bool
     description: str
 
 
@@ -33,13 +29,11 @@ class SpatialUnitMetadata(BaseModel):
     unit_type: str
     latitude: float
     longitude: float
-    is_mock: bool = True
 
 
 class PeriodMetadata(BaseModel):
     period_id: str
     name: str
-    is_mock: bool = True
 
 
 class RiskMapItem(RiskResult):

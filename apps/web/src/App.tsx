@@ -2,14 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   compareRisk,
-  fetchModelMetadata,
   fetchPeriods,
   fetchRiskMap,
   fetchSpatialUnits,
 } from "./api";
 import { RiskMap } from "./components/RiskMap";
 import type {
-  ModelMetadata,
   PeriodMetadata,
   RiskMapItem,
   RiskResult,
@@ -17,17 +15,16 @@ import type {
 } from "./types";
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Ocurrió un error inesperado.";
+  return error instanceof Error ? error.message : "An unexpected error occurred.";
 }
 
-function demoValue(value: number | null): string {
-  return value === null ? "Sin valor" : value.toFixed(4);
+function formatValue(value: number | null): string {
+  return value === null ? "No value" : value.toFixed(4);
 }
 
 export default function App() {
   const [spatialUnits, setSpatialUnits] = useState<SpatialUnitMetadata[]>([]);
   const [periods, setPeriods] = useState<PeriodMetadata[]>([]);
-  const [metadata, setMetadata] = useState<ModelMetadata | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState("");
   const [mapItems, setMapItems] = useState<RiskMapItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<RiskMapItem | null>(null);
@@ -41,27 +38,25 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
 
-    async function bootstrap() {
+    async function loadMetadata() {
       try {
-        const [units, availablePeriods, modelMetadata] = await Promise.all([
+        const [units, availablePeriods] = await Promise.all([
           fetchSpatialUnits(),
           fetchPeriods(),
-          fetchModelMetadata(),
         ]);
 
         if (cancelled) return;
         setSpatialUnits(units);
         setPeriods(availablePeriods);
-        setMetadata(modelMetadata);
         setSelectedPeriod(availablePeriods[0]?.period_id ?? "");
         setCompareA(units[0]?.spatial_unit_id ?? "");
         setCompareB(units[1]?.spatial_unit_id ?? units[0]?.spatial_unit_id ?? "");
-      } catch (bootstrapError) {
-        if (!cancelled) setError(errorMessage(bootstrapError));
+      } catch (metadataError) {
+        if (!cancelled) setError(errorMessage(metadataError));
       }
     }
 
-    void bootstrap();
+    void loadMetadata();
     return () => {
       cancelled = true;
     };
@@ -100,7 +95,7 @@ export default function App() {
     };
   }, [selectedPeriod]);
 
-  const averageDemoValue = useMemo(() => {
+  const averageValue = useMemo(() => {
     const values = mapItems
       .map((item) => item.value)
       .filter((value): value is number => value !== null);
@@ -129,23 +124,13 @@ export default function App() {
     <div className="app-shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">SI727 · Grupo 6 · Prototipo técnico</p>
-          <h1>Raster Analytics Web</h1>
+          <p className="eyebrow">Pedestrian risk analysis</p>
+          <h1>Raster Analytics</h1>
           <p className="subtitle">
-            Base modular para análisis espaciotemporal del riesgo de atropello peatonal en
-            Lima Metropolitana.
+            Explore spatiotemporal pedestrian collision risk across Metropolitan Lima.
           </p>
         </div>
-        <div className="mock-badge" aria-label="Modo demo activo">
-          MOCK / DEMO
-        </div>
       </header>
-
-      <section className="warning-banner">
-        <strong>Datos sintéticos.</strong> Los puntos, periodos y valores de esta pantalla existen
-        únicamente para validar el flujo técnico. El valor DEMO no es una probabilidad, una
-        predicción futura ni un resultado de riesgo real.
-      </section>
 
       {error && <section className="error-banner">{error}</section>}
 
@@ -153,14 +138,14 @@ export default function App() {
         <section className="panel controls-panel">
           <div className="panel-heading">
             <div>
-              <p className="section-kicker">Consulta</p>
-              <h2>Periodo y mapa</h2>
+              <p className="section-kicker">Explore</p>
+              <h2>Period and map</h2>
             </div>
-            {loadingMap && <span className="status-pill">Actualizando…</span>}
+            {loadingMap && <span className="status-pill">Updating…</span>}
           </div>
 
           <label className="field">
-            <span>Periodo</span>
+            <span>Period</span>
             <select
               value={selectedPeriod}
               onChange={(event) => setSelectedPeriod(event.target.value)}
@@ -183,56 +168,50 @@ export default function App() {
           </div>
 
           <div className="legend">
-            <span><i className="legend-dot low" /> Valor DEMO menor</span>
-            <span><i className="legend-dot medium" /> Valor DEMO intermedio</span>
-            <span><i className="legend-dot high" /> Valor DEMO mayor</span>
+            <span><i className="legend-dot low" /> Lower score</span>
+            <span><i className="legend-dot medium" /> Mid-range score</span>
+            <span><i className="legend-dot high" /> Higher score</span>
           </div>
         </section>
 
         <aside className="side-column">
           <section className="panel detail-panel">
-            <p className="section-kicker">Detalle seleccionado</p>
-            <h2>{selectedItem?.name ?? "Seleccione un punto"}</h2>
+            <p className="section-kicker">Selected area</p>
+            <h2>{selectedItem?.name ?? "Select an area"}</h2>
             {selectedItem ? (
               <>
-                <div className="demo-value">{demoValue(selectedItem.value)}</div>
-                <p className="muted">Valor sintético para integración, sin interpretación científica.</p>
+                <div className="risk-value">{formatValue(selectedItem.value)}</div>
+                <p className="muted">Score for the selected period.</p>
                 <dl className="metadata-list">
-                  <div><dt>Unidad</dt><dd>{selectedItem.spatial_unit_id}</dd></div>
-                  <div><dt>Periodo</dt><dd>{selectedItem.period_id}</dd></div>
-                  <div><dt>Proveedor</dt><dd>{selectedItem.provider}</dd></div>
-                  <div><dt>Modelo</dt><dd>{selectedItem.model_version}</dd></div>
+                  <div><dt>Area</dt><dd>{selectedItem.spatial_unit_id}</dd></div>
+                  <div><dt>Period</dt><dd>{selectedItem.period_id}</dd></div>
                 </dl>
               </>
             ) : (
-              <p className="muted">El detalle aparecerá cuando la API entregue el mapa demo.</p>
+              <p className="muted">Select an area on the map to inspect its result.</p>
             )}
           </section>
 
           <section className="panel summary-panel">
-            <p className="section-kicker">Estado del slice</p>
+            <p className="section-kicker">Overview</p>
             <div className="stat-row">
-              <div><strong>{mapItems.length}</strong><span>puntos DEMO</span></div>
-              <div><strong>{demoValue(averageDemoValue)}</strong><span>promedio DEMO</span></div>
+              <div><strong>{mapItems.length}</strong><span>mapped areas</span></div>
+              <div><strong>{formatValue(averageValue)}</strong><span>average score</span></div>
             </div>
-            <p className="muted compact">
-              La unidad espacial definitiva sigue abierta. Estos puntos solo permiten ejercitar
-              mapa, selección, filtros y contratos API.
-            </p>
           </section>
         </aside>
 
         <section className="panel compare-panel">
           <div className="panel-heading">
             <div>
-              <p className="section-kicker">Comparación</p>
-              <h2>Dos unidades, mismo periodo</h2>
+              <p className="section-kicker">Compare</p>
+              <h2>Two areas, same period</h2>
             </div>
           </div>
 
           <div className="comparison-form">
             <label className="field">
-              <span>Unidad A</span>
+              <span>Area A</span>
               <select value={compareA} onChange={(event) => setCompareA(event.target.value)}>
                 {spatialUnits.map((unit) => (
                   <option key={unit.spatial_unit_id} value={unit.spatial_unit_id}>{unit.name}</option>
@@ -240,7 +219,7 @@ export default function App() {
               </select>
             </label>
             <label className="field">
-              <span>Unidad B</span>
+              <span>Area B</span>
               <select value={compareB} onChange={(event) => setCompareB(event.target.value)}>
                 {spatialUnits.map((unit) => (
                   <option key={unit.spatial_unit_id} value={unit.spatial_unit_id}>{unit.name}</option>
@@ -253,7 +232,7 @@ export default function App() {
               onClick={() => void runComparison()}
               disabled={loadingComparison || !compareA || !compareB || !selectedPeriod}
             >
-              {loadingComparison ? "Comparando…" : "Comparar DEMO"}
+              {loadingComparison ? "Comparing…" : "Compare"}
             </button>
           </div>
 
@@ -262,24 +241,11 @@ export default function App() {
               {comparison.map((result) => (
                 <article key={result.spatial_unit_id}>
                   <span>{spatialUnitName(result.spatial_unit_id)}</span>
-                  <strong>{demoValue(result.value)}</strong>
-                  <small>{result.model_version}</small>
+                  <strong>{formatValue(result.value)}</strong>
                 </article>
               ))}
             </div>
           )}
-        </section>
-
-        <section className="panel provenance-panel">
-          <p className="section-kicker">Trazabilidad técnica</p>
-          <h2>Proveedor activo</h2>
-          <dl className="metadata-list horizontal">
-            <div><dt>Provider</dt><dd>{metadata?.provider ?? "—"}</dd></div>
-            <div><dt>Modelo</dt><dd>{metadata?.model_version ?? "—"}</dd></div>
-            <div><dt>Dataset</dt><dd>{metadata?.dataset_version ?? "—"}</dd></div>
-            <div><dt>Mock</dt><dd>{metadata?.is_mock ? "Sí" : "No"}</dd></div>
-          </dl>
-          <p className="muted compact">{metadata?.description}</p>
         </section>
       </main>
     </div>

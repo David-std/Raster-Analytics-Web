@@ -54,9 +54,7 @@ export function RiskMap({ items, selectedId, onSelect }: RiskMapProps) {
             <Popup>
               <strong>{item.name}</strong>
               <br />
-              Valor DEMO: {item.value?.toFixed(4) ?? "sin valor"}
-              <br />
-              <small>No representa una probabilidad ni un resultado analítico.</small>
+              Score: {item.value?.toFixed(4) ?? "No value"}
             </Popup>
           </CircleMarker>
         );

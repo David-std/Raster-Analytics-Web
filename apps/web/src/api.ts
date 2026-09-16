@@ -1,5 +1,4 @@
 import type {
-  ModelMetadata,
   PeriodMetadata,
   RiskMapItem,
   RiskResult,
@@ -33,10 +32,6 @@ export function fetchSpatialUnits(): Promise<SpatialUnitMetadata[]> {
 
 export function fetchPeriods(): Promise<PeriodMetadata[]> {
   return request<PeriodMetadata[]>("/metadata/periods");
-}
-
-export function fetchModelMetadata(): Promise<ModelMetadata> {
-  return request<ModelMetadata>("/model/metadata");
 }
 
 export function fetchRiskMap(periodId: string): Promise<RiskMapItem[]> {

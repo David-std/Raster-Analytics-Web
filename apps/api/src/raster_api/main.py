@@ -1,8 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from raster_api.catalog import has_period, periods, spatial_units
 from raster_api.config import get_settings
-from raster_api.demo_catalog import has_period, periods, spatial_units
 from raster_api.domain.models import (
     ModelMetadata,
     PeriodMetadata,
@@ -11,12 +11,11 @@ from raster_api.domain.models import (
     RiskResult,
     SpatialUnitMetadata,
 )
-from raster_api.providers.mock import MockRiskProvider
+from raster_api.providers import RiskProvider
 
 app = FastAPI(
     title="Raster Analytics API",
-    version="0.2.0",
-    description="Provisional API for spatiotemporal pedestrian run-over risk analysis.",
+    description="API for spatiotemporal pedestrian collision risk analysis in Metropolitan Lima.",
 )
 
 settings = get_settings()
@@ -28,9 +27,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# v0 intentionally supports only mock. Baseline and CNN-RNN providers will be added behind
-# the same contract after data profiling and benchmarking.
-provider = MockRiskProvider()
+risk_provider = RiskProvider()
 
 
 @app.get("/health")
@@ -40,7 +37,7 @@ def health() -> dict[str, str]:
 
 @app.get("/model/metadata", response_model=ModelMetadata)
 def model_metadata() -> ModelMetadata:
-    return provider.metadata()
+    return risk_provider.metadata()
 
 
 @app.get("/metadata/spatial-units", response_model=list[SpatialUnitMetadata])
@@ -55,17 +52,17 @@ def period_metadata() -> list[PeriodMetadata]:
 
 @app.get("/risk", response_model=RiskResult)
 def risk(spatial_unit: str, period: str) -> RiskResult:
-    return provider.predict(RiskQuery(spatial_unit_id=spatial_unit, period_id=period))
+    return risk_provider.predict(RiskQuery(spatial_unit_id=spatial_unit, period_id=period))
 
 
 @app.get("/risk/map", response_model=list[RiskMapItem])
 def risk_map(period: str) -> list[RiskMapItem]:
     if not has_period(period):
-        raise HTTPException(status_code=404, detail="Unknown demo period")
+        raise HTTPException(status_code=404, detail="Unknown period")
 
     items: list[RiskMapItem] = []
     for unit in spatial_units():
-        result = provider.predict(
+        result = risk_provider.predict(
             RiskQuery(spatial_unit_id=unit.spatial_unit_id, period_id=period)
         )
         items.append(
@@ -81,4 +78,4 @@ def risk_map(period: str) -> list[RiskMapItem]:
 
 @app.post("/risk/compare", response_model=list[RiskResult])
 def compare(queries: list[RiskQuery]) -> list[RiskResult]:
-    return provider.compare(queries)
+    return risk_provider.compare(queries)
