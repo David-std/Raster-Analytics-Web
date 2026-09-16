@@ -154,7 +154,9 @@ def profile_arcgis_layer(
             }
 
         requested_fields = distinct_fields or _DEFAULT_DISTINCT_FIELDS
-        safe_distinct_fields = tuple(field for field in requested_fields if field in available_fields)
+        safe_distinct_fields = tuple(
+            field for field in requested_fields if field in available_fields
+        )
         distinct_values, distinct_value_errors = _query_distinct_values(
             layer_url,
             safe_distinct_fields,
