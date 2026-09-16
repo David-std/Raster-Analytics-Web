@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "status": "OPEN_EVIDENCE_GATE",
+  "principle": "Crash frequency, pedestrian exposure, vehicle exposure and contextual covariates are distinct analytical concepts and must not be collapsed by convenience.",
+  "pedestrian_exposure": {
+    "direct_measure": {
+      "status": "BLOCKED",
+      "required_properties": [
+        "ratio_scale",
+        "known_zero_semantics",
+        "spatial_alignment",
+        "temporal_alignment",
+        "documented_coverage",
+        "not_conditioned_on_crash_occurrence"
+      ],
+      "candidate_sources": ["atu_pmu_2025_mobility_microdata"],
+      "current_evidence": "ATU publicly documents 24-hour, seven-day people and vehicle counts at 27 high-traffic points for PMU work, but reusable citywide microdata has not been qualified."
+    },
+    "local_validation_signal": {
+      "status": "CANDIDATE",
+      "source_ids": ["atu_metropolitano_station_validations"],
+      "semantics": "observed transit demand at Metropolitano stations/corridor",
+      "allowed_uses": [
+        "local_proxy_validation",
+        "temporal_pattern_validation",
+        "sensitivity_analysis"
+      ],
+      "forbidden_uses": [
+        "citywide_pedestrian_count",
+        "citywide_exposure_denominator",
+        "unvalidated_extrapolation_outside_served_corridor"
+      ]
+    },
+    "proxy_components": [
+      "population_density_static",
+      "transit_stop_density",
+      "transport_route_density",
+      "zoning_land_use_composition"
+    ],
+    "proxy_policy": {
+      "status": "CONDITIONAL",
+      "rule": "Proxy components remain covariates unless a separately validated exposure model is demonstrated.",
+      "validation_requirements": [
+        "development-only fitting",
+        "comparison against observed demand/count signals",
+        "held-out local validation where sample size permits",
+        "rank and calibration diagnostics",
+        "spatial residual inspection",
+        "ablation against individual proxy components",
+        "no use as a count-model offset unless ratio-scale exposure semantics are independently proven"
+      ]
+    }
+  },
+  "vehicle_exposure": {
+    "direct_measure": {
+      "status": "BLOCKED",
+      "candidate_sources": ["atu_pmu_2025_mobility_microdata"],
+      "current_evidence": "PMU work proves direct traffic/person counting was performed at selected points; a reusable network-wide aligned volume source remains unqualified."
+    },
+    "context_only_sources": [
+      "minam_dot_transport_routes",
+      "minam_dot_vehicle_congestion",
+      "mtc_toll_flow_2014_2026q1"
+    ],
+    "rule": "Route geometry, congestion classes and toll-station counts are not interchangeable with citywide vehicle exposure."
+  },
+  "fallback_product_semantics": {
+    "if_direct_exposure_remains_unavailable": "Train and evaluate crash-frequency/occurrence models with qualified contextual covariates; present results as model-estimated relative analytical risk/frequency, not as exposure-normalized individual collision probability.",
+    "forbidden_claim": "Do not label a crash-frequency model as an exposure-normalized pedestrian risk rate."
+  },
+  "exit_conditions": [
+    "Direct pedestrian exposure is qualified, or the proxy strategy is explicitly selected and validated for its limited semantics.",
+    "Vehicle exposure treatment is documented separately from route/context geometry.",
+    "Product wording matches the selected target semantics.",
+    "The benchmark plan includes an ablation without exposure proxies and without lagged outcome history."
+  ]
+}
