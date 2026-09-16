@@ -2,7 +2,12 @@ import pytest
 from shapely.geometry import LineString, Point, box
 
 from pipelines.features.coverage import AnalysisUnit
-from pipelines.features.transform import line_length_density, point_density
+from pipelines.features.transform import (
+    CategorizedGeometry,
+    line_length_density,
+    point_density,
+    polygon_category_composition,
+)
 
 
 def _units() -> list[AnalysisUnit]:
@@ -46,6 +51,44 @@ def test_line_density_rejects_non_positive_unit_area() -> None:
 
     with pytest.raises(ValueError, match="non-positive area"):
         line_length_density(units, [LineString([(0, 500), (1000, 500)])])
+
+
+def test_polygon_composition_uses_full_unit_area_as_denominator() -> None:
+    features = [
+        CategorizedGeometry(box(0, 0, 500, 1000), "residential"),
+        CategorizedGeometry(box(500, 0, 750, 1000), "commercial"),
+    ]
+
+    result = polygon_category_composition(_units(), features)[0]
+
+    assert result.unit_id == "a"
+    assert result.category_area_shares["residential"] == pytest.approx(0.5)
+    assert result.category_area_shares["commercial"] == pytest.approx(0.25)
+    assert result.observed_area_ratio == pytest.approx(0.75)
+    assert result.category_sum_ratio == pytest.approx(0.75)
+    assert result.overlap_ratio == pytest.approx(0.0)
+
+
+def test_polygon_composition_exposes_cross_category_overlap() -> None:
+    features = [
+        CategorizedGeometry(box(0, 0, 750, 1000), "residential"),
+        CategorizedGeometry(box(500, 0, 1000, 1000), "commercial"),
+    ]
+
+    result = polygon_category_composition(_units(), features)[0]
+
+    assert result.observed_area_ratio == pytest.approx(1.0)
+    assert result.category_sum_ratio == pytest.approx(1.25)
+    assert result.overlap_ratio == pytest.approx(0.25)
+
+
+def test_polygon_composition_preserves_unclassified_area() -> None:
+    result = polygon_category_composition(
+        _units(),
+        [CategorizedGeometry(box(0, 0, 500, 1000), None)],
+    )[0]
+
+    assert result.category_area_shares["__UNCLASSIFIED__"] == pytest.approx(0.5)
 
 
 def test_transform_requires_units() -> None:
