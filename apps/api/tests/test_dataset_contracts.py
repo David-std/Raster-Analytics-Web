@@ -5,7 +5,6 @@ import pytest
 
 from ml import datasets as ds
 
-
 CATALOG_PATH = Path("data/features/catalog.json")
 SOURCE_CATALOG_PATH = Path("data/sources/qualification.json")
 
