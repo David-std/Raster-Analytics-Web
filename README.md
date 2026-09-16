@@ -29,7 +29,8 @@ The web application supports period filtering, map exploration, area selection, 
 ```text
 apps/api        FastAPI backend
 apps/web        React + TypeScript frontend
-pipelines       Data profiling and processing utilities
+pipelines       Data ingestion, profiling, and processing utilities
+data            Source registry and data documentation
 docs            Architecture documentation
 ```
 
@@ -66,7 +67,17 @@ npm run dev
 
 The application is served at `http://localhost:5173` by default.
 
-## Profile a dataset
+## Data sources
+
+Official source workbooks are registered under `data/sources/`. To download and inspect the primary ONSV sources:
+
+```bash
+python -m pipelines.ingestion.onsv sync
+```
+
+Raw files and generated inventories remain outside version control.
+
+## Profile a CSV dataset
 
 The profiling pipeline inspects a CSV without modifying the source file:
 
