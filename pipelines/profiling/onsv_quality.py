@@ -61,8 +61,8 @@ def profile_onsv_pedestrian_events(
     """Profile semantic and geographic suitability of normalized ONSV pedestrian events.
 
     A person classified as PEATON in a fatal crash is not automatically equivalent to a
-    crash whose recorded class is ATROPELLO. This report preserves that distinction so a
-    later target definition can choose an inclusion rule explicitly rather than by accident.
+    crash whose recorded class is ATROPELLO. The report exposes both populations so target
+    selection remains an explicit analytical decision rather than an ingestion side effect.
     """
     expected_districts = load_expected_districts(district_reference)
     path = Path(csv_path)
@@ -72,6 +72,8 @@ def profile_onsv_pedestrian_events(
     by_year: Counter[str] = Counter()
     by_class: Counter[str] = Counter()
     by_district: Counter[str] = Counter()
+    strict_atropello_by_year: Counter[str] = Counter()
+    broader_pedestrian_linked_by_year: Counter[str] = Counter()
     year_dates: dict[str, list[date]] = defaultdict(list)
     valid_times = 0
     class_contains_atropello = 0
@@ -86,6 +88,7 @@ def profile_onsv_pedestrian_events(
 
         if year:
             by_year[year] += 1
+            broader_pedestrian_linked_by_year[year] += 1
             if parsed_date:
                 year_dates[year].append(parsed_date)
         if crash_class:
@@ -97,6 +100,8 @@ def profile_onsv_pedestrian_events(
 
         if "ATROPELLO" in crash_class:
             class_contains_atropello += 1
+            if year:
+                strict_atropello_by_year[year] += 1
         else:
             class_not_atropello += 1
             try:
@@ -111,7 +116,9 @@ def profile_onsv_pedestrian_events(
     year_coverage = {}
     for year, dates in sorted(year_dates.items()):
         year_coverage[year] = {
-            "events": by_year[year],
+            "pedestrian_linked_fatal_crashes": by_year[year],
+            "strict_atropello_class_crashes": strict_atropello_by_year[year],
+            "other_pedestrian_linked_crashes": by_year[year] - strict_atropello_by_year[year],
             "first_date": min(dates).isoformat(),
             "last_date": max(dates).isoformat(),
         }
@@ -121,6 +128,20 @@ def profile_onsv_pedestrian_events(
         "rows": len(rows),
         "year_coverage": year_coverage,
         "crash_class_distribution": dict(by_class.most_common()),
+        "target_population_candidates": {
+            "strict_atropello_class": {
+                "definition": "Recorded crash class contains ATROPELLO.",
+                "rows": class_contains_atropello,
+                "by_year": dict(sorted(strict_atropello_by_year.items())),
+                "status": "CANDIDATE_NOT_SELECTED",
+            },
+            "broader_pedestrian_linked_fatal_crash": {
+                "definition": "Fatal crash has at least one linked person classified as PEATON.",
+                "rows": len(rows),
+                "by_year": dict(sorted(broader_pedestrian_linked_by_year.items())),
+                "status": "CANDIDATE_NOT_SELECTED",
+            },
+        },
         "class_name_contains_atropello": class_contains_atropello,
         "class_name_not_contains_atropello": class_not_atropello,
         "pedestrian_fatalities_in_non_atropello_class": fatalities_in_non_atropello,
@@ -135,7 +156,7 @@ def profile_onsv_pedestrian_events(
         "semantic_warning": (
             "Rows are selected because a PEATON person is linked to the fatal crash. "
             "The recorded crash class is heterogeneous; do not call every row an atropello "
-            "until the target inclusion rule is explicitly defined."
+            "until the target inclusion rule is explicitly defined and reviewed."
         ),
     }
 
