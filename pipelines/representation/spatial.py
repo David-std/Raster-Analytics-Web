@@ -4,6 +4,7 @@ import json
 import math
 import re
 import unicodedata
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -44,7 +45,10 @@ class GridDefinition:
     valid_units: frozenset[str]
     full_cell_count: int
     partial_cell_count: int
+    boundary_intersecting_cell_count: int
+    excluded_by_support_count: int
     boundary_area_km2: float
+    support_label: str | None = None
 
     @property
     def unit_count(self) -> int:
@@ -53,7 +57,8 @@ class GridDefinition:
     @property
     def representation_id(self) -> str:
         offset_label = "base" if self.offset_fraction == 0 else "half_shift"
-        return f"grid_{self.cell_size_m}m_{offset_label}"
+        support = f"_{self.support_label}" if self.support_label else ""
+        return f"grid_{self.cell_size_m}m{support}_{offset_label}"
 
 
 def _feature_properties(feature: dict[str, Any]) -> dict[str, Any]:
@@ -147,17 +152,21 @@ def build_grid_definition(
     cell_size_m: int,
     *,
     offset_fraction: float = 0.0,
+    support_predicate: Callable[[BaseGeometry], bool] | None = None,
+    support_label: str | None = None,
 ) -> GridDefinition:
-    """Build a regular UTM lattice and retain cells that intersect the Lima boundary.
+    """Build a regular UTM lattice with optional structural-support filtering.
 
-    Cell geometries are not clipped because a CNN candidate needs a regular lattice. Instead,
-    full versus boundary-intersecting cells are counted separately and the lattice origin is
-    retained so event assignment is reproducible.
+    Cell geometries are never clipped because an image-like CNN candidate needs a regular lattice.
+    A support predicate can remove cells that do not intersect a qualified structural surface, but
+    this is a sampling/support diagnostic only: it does not convert the support layer into exposure.
     """
     if cell_size_m <= 0:
         raise ValueError("cell_size_m must be positive")
     if offset_fraction not in {0.0, 0.5}:
         raise ValueError("offset_fraction must be 0.0 or 0.5 for the current experiment")
+    if support_label and support_predicate is None:
+        raise ValueError("support_label requires support_predicate")
 
     min_x, min_y, max_x, max_y = boundary_projected.bounds
     origin_x = _grid_origin(min_x, cell_size_m, offset_fraction)
@@ -168,6 +177,8 @@ def build_grid_definition(
     valid_units: set[str] = set()
     full_cell_count = 0
     partial_cell_count = 0
+    boundary_intersecting_cell_count = 0
+    excluded_by_support_count = 0
     for column in range(max_column):
         x0 = origin_x + column * cell_size_m
         x1 = x0 + cell_size_m
@@ -176,6 +187,10 @@ def build_grid_definition(
             y1 = y0 + cell_size_m
             cell = box(x0, y0, x1, y1)
             if not boundary_projected.intersects(cell):
+                continue
+            boundary_intersecting_cell_count += 1
+            if support_predicate is not None and not support_predicate(cell):
+                excluded_by_support_count += 1
                 continue
             valid_units.add(_grid_unit_id(column, row))
             if boundary_projected.covers(cell):
@@ -191,7 +206,10 @@ def build_grid_definition(
         valid_units=frozenset(valid_units),
         full_cell_count=full_cell_count,
         partial_cell_count=partial_cell_count,
+        boundary_intersecting_cell_count=boundary_intersecting_cell_count,
+        excluded_by_support_count=excluded_by_support_count,
         boundary_area_km2=boundary_projected.area / 1_000_000,
+        support_label=support_label,
     )
 
 
