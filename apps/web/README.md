@@ -1,5 +1,29 @@
-# Web
+# Web app · Mock vertical slice
 
-Frontend implementation will follow after the API/provider scaffold is merged.
+Frontend provisional en React + TypeScript + Leaflet para validar el flujo `MockRiskProvider -> API -> mapa -> filtro -> detalle -> comparación`.
 
-The first vertical slice will consume mock API data and must clearly label all synthetic results as `MOCK/DEMO`. The UI should not assume that the final risk output is a probability or that the final spatial/temporal units are already known.
+## Ejecutar
+
+Con la API disponible en `http://localhost:8000`:
+
+```bash
+cd apps/web
+npm install
+npm run dev
+```
+
+Por defecto el frontend consulta `http://localhost:8000`. Para cambiarlo:
+
+```bash
+VITE_API_BASE_URL=http://localhost:8000 npm run dev
+```
+
+En Windows puede crearse `apps/web/.env.local`:
+
+```text
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+## Importante
+
+Todo lo visible en esta fase es **MOCK / DEMO**. Los nombres y puntos representativos permiten ejercitar la interfaz geoespacial, pero no fijan la unidad espacial definitiva del proyecto. Los valores son sintéticos y no representan probabilidades, predicciones ni resultados analíticos.

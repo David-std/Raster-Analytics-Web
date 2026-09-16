@@ -25,3 +25,24 @@ class ModelMetadata(BaseModel):
     dataset_version: str
     is_mock: bool
     description: str
+
+
+class SpatialUnitMetadata(BaseModel):
+    spatial_unit_id: str
+    name: str
+    unit_type: str
+    latitude: float
+    longitude: float
+    is_mock: bool = True
+
+
+class PeriodMetadata(BaseModel):
+    period_id: str
+    name: str
+    is_mock: bool = True
+
+
+class RiskMapItem(RiskResult):
+    name: str
+    latitude: float
+    longitude: float
