@@ -1,69 +1,41 @@
 # Raster Analytics Web
 
-Aplicación web para el análisis espaciotemporal del riesgo de atropello peatonal en Lima Metropolitana.
+Web application for spatiotemporal analysis of pedestrian collision risk in Metropolitan Lima.
 
-## Estado actual
+## Overview
 
-`mock vertical slice v0`
-
-La base está diseñada para evolucionar sin acoplar la aplicación a una implementación concreta del modelo:
+The system combines a geospatial web interface, an API for risk queries, and a reproducible data pipeline for profiling and preparing source datasets.
 
 ```text
-MockRiskProvider -> BaselineRiskProvider -> CNNRNNRiskProvider
+Source data
+    |
+    v
+Profiling and processing
+    |
+    v
+Risk model
+    |
+    v
+FastAPI
+    |
+    v
+React + Leaflet
 ```
 
-- **Scaffold**: estructura ejecutable y contratos entre componentes.
-- **Mock**: implementación sintética para probar integración sin datos/modelo reales.
-- **Baseline**: primer modelo real de referencia, construido después del perfilamiento.
+The web application supports period filtering, map exploration, area selection, and side-by-side comparison. The model layer is isolated from the API so the scoring implementation can evolve without changing the client contract.
 
-## Flujo conceptual
+## Repository structure
 
 ```text
-Datos históricos/contextuales
-          |
-          v
-Procesamiento espaciotemporal
-          |
-          v
-RiskProvider
-          |
-          v
-API
-          |
-          v
-Mapa + filtros + detalle + comparación
+apps/api        FastAPI backend
+apps/web        React + TypeScript frontend
+pipelines       Data profiling and processing utilities
+docs            Architecture documentation
 ```
 
-El proyecto no asume todavía que la salida sea una probabilidad ni una predicción futura. La unidad espacial, unidad temporal, definición operativa del riesgo, baseline y configuración CNN-RNN siguen abiertas hasta perfilamiento y benchmarking.
+## Run the API
 
-## Mock vertical slice
-
-La rama de integración contiene un flujo ejecutable con:
-
-- catálogo DEMO de puntos representativos en Lima;
-- periodos DEMO;
-- `MockRiskProvider` determinístico;
-- API de metadata, mapa y comparación;
-- frontend React/TypeScript;
-- mapa Leaflet;
-- filtro por periodo, selección, detalle y comparación;
-- trazabilidad del provider/modelo/dataset activo.
-
-**Nada del catálogo o de los valores DEMO constituye evidencia del proyecto.** Los puntos no fijan la futura unidad espacial y los valores sintéticos no son probabilidades, predicciones ni niveles reales de riesgo.
-
-## GitFlow
-
-- `main`: línea estable.
-- `develop`: integración.
-- `feature/*`: trabajo aislado.
-- `release/*`: preparación de entregas.
-- `hotfix/*`: correcciones urgentes.
-
-El trabajo normal entra primero a `develop` mediante PR. `main` se reserva para cortes estables.
-
-## Ejecutar API
-
-Requisitos: Python 3.12+.
+Requirements: Python 3.12+.
 
 ```bash
 python -m venv .venv
@@ -72,7 +44,7 @@ pip install -e ".[dev]"
 uvicorn raster_api.main:app --app-dir apps/api/src --reload
 ```
 
-Endpoints actuales:
+Available endpoints:
 
 - `GET /health`
 - `GET /model/metadata`
@@ -82,9 +54,9 @@ Endpoints actuales:
 - `GET /risk/map?period=...`
 - `POST /risk/compare`
 
-## Ejecutar frontend
+## Run the web application
 
-Con la API corriendo en `http://localhost:8000`:
+With the API available at `http://localhost:8000`:
 
 ```bash
 cd apps/web
@@ -92,9 +64,19 @@ npm install
 npm run dev
 ```
 
-La interfaz estará disponible en `http://localhost:5173`.
+The application is served at `http://localhost:5173` by default.
 
-## Calidad
+## Profile a dataset
+
+The profiling pipeline inspects a CSV without modifying the source file:
+
+```bash
+python -m pipelines.profiling path/to/source.csv --output reports/source-profile.json
+```
+
+The generated report includes file traceability, row and column counts, duplicate detection, null rates, conservative type inference, coordinate checks, temporal candidates, and quality warnings.
+
+## Quality checks
 
 Backend:
 
@@ -111,4 +93,4 @@ npm run typecheck
 npm run build
 ```
 
-La documentación de arquitectura está en `docs/architecture/`.
+See `docs/architecture/architecture.md` for the application structure.
