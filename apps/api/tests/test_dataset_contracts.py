@@ -17,6 +17,7 @@ from ml.datasets import (
 
 
 CATALOG_PATH = Path("data/features/catalog.json")
+SOURCE_CATALOG_PATH = Path("data/sources/qualification.json")
 
 
 def test_repository_contract_catalog_is_valid() -> None:
@@ -26,6 +27,20 @@ def test_repository_contract_catalog_is_valid() -> None:
     assert catalog.features["direct_pedestrian_exposure"].status is ContractStatus.BLOCKED
     assert catalog.targets["fatal_pedestrian_exposure_rate"].status is ContractStatus.BLOCKED
     assert catalog.targets["pedestrian_linked_fatal_count"].status is ContractStatus.CANDIDATE
+
+
+def test_feature_lineage_references_qualified_source_ids() -> None:
+    feature_catalog = load_contract_catalog(CATALOG_PATH)
+    source_catalog = json.loads(SOURCE_CATALOG_PATH.read_text(encoding="utf-8"))
+    source_ids = {item["id"] for item in source_catalog["sources"]}
+
+    missing = {
+        source_id
+        for feature in feature_catalog.feature_definitions
+        for source_id in feature.source_ids
+        if source_id not in source_ids
+    }
+    assert missing == set()
 
 
 def test_proxy_exposure_cannot_be_promoted_to_offset() -> None:
