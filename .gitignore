@@ -1,0 +1,25 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+coverage.xml
+htmlcov/
+.DS_Store
+.idea/
+.vscode/
+node_modules/
+dist/
+build/
+
+# Data artifacts: keep only documentation, schemas and tiny samples in Git.
+data/raw/
+data/processed/
+data/interim/
+models/artifacts/
