@@ -5,9 +5,10 @@ import csv
 import re
 import unicodedata
 from collections import Counter, defaultdict
+from collections.abc import Iterator
 from datetime import date, datetime, time
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from openpyxl import load_workbook
 
@@ -54,7 +55,9 @@ def _key(value: Any) -> str:
     if value is None:
         return ""
     decomposed = unicodedata.normalize("NFKD", str(value))
-    without_marks = "".join(character for character in decomposed if not unicodedata.combining(character))
+    without_marks = "".join(
+        character for character in decomposed if not unicodedata.combining(character)
+    )
     alphanumeric = re.sub(r"[^A-Za-z0-9]+", " ", without_marks.replace("_", " "))
     return " ".join(alphanumeric.upper().split())
 
@@ -74,7 +77,9 @@ def _iter_table(path: Path, sheet_name: str) -> Iterator[dict[str, Any]]:
     headers = [_key(value) for value in header_values]
     try:
         for row in worksheet.iter_rows(min_row=_HEADER_ROW + 1, values_only=True):
-            record = {header: value for header, value in zip(headers, row) if header}
+            record = {
+                header: value for header, value in zip(headers, row, strict=False) if header
+            }
             if _text(record.get("CODIGO SINIESTRO")):
                 yield record
     finally:
