@@ -20,6 +20,7 @@ _ALLOWED_EVIDENCE = {
 }
 _REQUIRED_ROLE_GROUPS = {
     "outcome": {"outcome_event"},
+    "severity": {"severity_outcome"},
     "pedestrian_exposure": {"pedestrian_exposure", "pedestrian_exposure_proxy"},
     "traffic_exposure": {"traffic_exposure", "traffic_exposure_proxy"},
     "built_environment": {"built_environment"},
@@ -119,6 +120,14 @@ def _is_accepted_real(record: SourceRecord) -> bool:
     return record.status == "ACCEPTED" and record.evidence_state == "PROVEN_WITH_REAL_SOURCE"
 
 
+def _is_partial_problem_scope(record: SourceRecord) -> bool:
+    coverage = record.payload.get("coverage")
+    return (
+        isinstance(coverage, dict)
+        and coverage.get("analytical_scope") == "partial_problem_scope"
+    )
+
+
 def _exposure_state(group: str, records: list[SourceRecord]) -> tuple[str, dict[str, Any]]:
     direct_role, proxy_role = _EXPOSURE_ROLES[group]
     direct = [record for record in records if direct_role in record.model_roles]
@@ -161,9 +170,10 @@ def build_readiness_summary(records: list[SourceRecord]) -> dict[str, Any]:
 
         accepted = [record for record in matching_records if _is_accepted_real(record)]
         blocked = [record for record in matching_records if record.status == "BLOCKED"]
-        if accepted and blocked:
-            # A known unresolved source gap for the same analytical role means the
-            # available layer must not be mistaken for full-scope coverage.
+        partial_scope = [record for record in accepted if _is_partial_problem_scope(record)]
+        if accepted and (blocked or partial_scope):
+            # A blocked broader source or an accepted source explicitly marked as
+            # narrower than the problem scope must not be mistaken for full coverage.
             state = "PARTIAL_SCOPE"
         elif accepted:
             state = "READY"
