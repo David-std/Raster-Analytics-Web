@@ -17,6 +17,7 @@ def test_repository_contract_catalog_is_valid() -> None:
     assert catalog.version == 1
     assert catalog.features["direct_pedestrian_exposure"].status is ds.ContractStatus.BLOCKED
     assert catalog.targets["fatal_pedestrian_exposure_rate"].status is ds.ContractStatus.BLOCKED
+    assert catalog.targets["pedestrian_collision_severity"].status is ds.ContractStatus.BLOCKED
     assert catalog.targets["pedestrian_linked_fatal_count"].status is ds.ContractStatus.CANDIDATE
 
 
@@ -231,3 +232,13 @@ def test_non_observed_missingness_states_cannot_carry_fabricated_values() -> Non
                 )
             ],
         )
+
+
+def test_charter_v12_risk_dimensions_keep_severity_and_occurrence_partial() -> None:
+    raw = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
+    dimensions = {item["id"]: item for item in raw["risk_dimensions"]}
+
+    assert raw["charter_version"] == "1.2"
+    assert dimensions["occurrence"]["status"] == "PARTIAL_SCOPE"
+    assert dimensions["severity"]["status"] == "PARTIAL_SCOPE"
+    assert dimensions["pedestrian_exposure"]["status"] == "RESEARCH_REQUIRED"
