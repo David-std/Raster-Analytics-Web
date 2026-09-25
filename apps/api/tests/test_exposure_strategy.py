@@ -67,7 +67,10 @@ def test_fallback_semantics_forbid_exposure_normalized_probability_claim() -> No
     strategy = _strategy()
     fallback = strategy["fallback_product_semantics"]
 
-    assert "relative analytical risk/frequency" in fallback["if_direct_exposure_remains_unavailable"]
+    assert (
+        "relative analytical risk/frequency"
+        in fallback["if_direct_exposure_remains_unavailable"]
+    )
     assert "exposure-normalized" in fallback["forbidden_claim"]
 
 
