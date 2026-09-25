@@ -2,6 +2,8 @@
 
 Status: **candidate analytical contract; no final risk target or feature set selected**
 
+Scope basis: **Project Charter v1.2**
+
 This document defines the rules that must hold before the repository can build a model-ready dataset.
 The contract narrows the space of valid implementations without pretending that missing exposure data
 or unresolved outcome semantics have already been solved.
@@ -17,6 +19,16 @@ strict_fatal_atropello
 ```
 
 They remain separate until the target population is selected with domain justification.
+
+Project Charter v1.2 makes the analytical dimensions explicit: occurrence, severity of consequences,
+pedestrian exposure, traffic/mobility, environment, and spatial-temporal variation. The current
+fatal-only event source supports occurrence within a high-severity stratum and limited consequence
+information; it does **not** support the full severity spectrum of pedestrian collisions.
+
+Severity is therefore treated as an outcome dimension. Same-period fatalities, injuries, or other
+consequence variables must not be reused as predictors of the same target period. A severity-aware
+training target may be activated only after its population, scale, source coverage and interpretation
+are defensible.
 
 The model may learn relationships between the outcome and qualified spatial/temporal context, but it
 must never use the target-period outcome itself as an input feature. Outcome history is allowed only
@@ -152,11 +164,19 @@ A user-facing relative-risk score can be useful for maps and comparison, but it 
 a validated model output. It is not a hand-crafted training label. The normalization formula remains
 open until calibration and benchmark behavior are known.
 
+### Severity outcome
+
+`pedestrian_collision_severity` remains blocked. The current ONSV detailed files are conditioned on
+fatal crashes, so they cannot represent the complete severity distribution of pedestrian collisions.
+Fatalities/injuries within that stratum remain valid descriptive evidence, but not a general
+all-severity target. A severity target must define its scale and consequence fields before activation.
+
 ### Broader non-fatal target
 
 An all-pedestrian-collision count remains blocked until a reproducible non-fatal event source is
 qualified. If that source is accepted later, representation profiling and target selection must be
-rerun because the event density may change materially.
+rerun because the event density may change materially. The same broader-source review is required
+before a general severity target can be promoted.
 
 ## 6. Missingness and source coverage
 
@@ -287,10 +307,11 @@ frozen, the project still needs evidence for:
 3. feature coverage for each surviving spatial representation;
 4. source-to-feature transformations with units and missingness;
 5. final outcome-population decision or pre-registered sensitivity comparison;
-6. target formulation selected for benchmark;
-7. temporal split version frozen before final training;
-8. feature leakage review;
-9. ablation plan, especially for lagged outcome history and exposure proxies.
+6. severity strategy consistent with available consequence data and the Charter v1.2 scope;
+7. target formulation selected for benchmark;
+8. temporal split version frozen before final training;
+9. feature leakage review;
+10. ablation plan, especially for lagged outcome history and exposure proxies.
 
 Until these gates close, the correct state is **contract defined, model-ready dataset not yet frozen**.
 
