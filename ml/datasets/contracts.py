@@ -42,6 +42,7 @@ class TargetKind(StrEnum):
     COUNT = "count"
     BINARY = "binary"
     RATE = "rate"
+    SEVERITY = "severity"
     PRESENTATION_INDEX = "presentation_index"
 
 
