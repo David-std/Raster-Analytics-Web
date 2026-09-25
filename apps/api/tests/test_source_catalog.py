@@ -111,3 +111,20 @@ def test_source_catalog_rejects_duplicate_ids(tmp_path) -> None:
 
     with pytest.raises(ValueError, match="Duplicate source id"):
         load_source_catalog(path)
+
+
+def test_source_catalog_reports_partial_scope_for_explicitly_narrow_source(tmp_path) -> None:
+    source = _source(
+        "fatal-severity",
+        "ACCEPTED",
+        "PROVEN_WITH_REAL_SOURCE",
+        ["severity_outcome"],
+    )
+    source["coverage"]["analytical_scope"] = "partial_problem_scope"
+    path = _catalog(tmp_path, [source])
+
+    _, records = load_source_catalog(path)
+    summary = build_readiness_summary(records)
+
+    assert summary["role_readiness"]["severity"]["state"] == "PARTIAL_SCOPE"
+    assert "severity" in summary["unresolved_role_groups"]
