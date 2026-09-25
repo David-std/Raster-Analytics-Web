@@ -215,6 +215,10 @@ reason:
 | ONSV people in fatal crashes 2021-2025 | ACCEPTED | identify pedestrian involvement/severity | same fatal-only scope |
 | ONSV vehicles in fatal crashes 2021-2025 | CANDIDATE | vehicle/context features for crash events | useful only after field completeness and join quality are profiled |
 | ONSV historical crashes 2008-2025 | AUXILIARY | historical trend/context | different aggregation/schema; do not merge as event-level records unless compatibility is proven |
+| INEI atropello statistics, first semester 2025 | AUXILIARY | broader occurrence/severity context | aggregate reporting confirms a broader outcome universe but is not a geocoded event-level training source |
+| SUTRAN road crashes 2020-2021 | AUXILIARY | partial-scope event/severity research | event-oriented with fatalities/injuries, but limited to national/departemental road jurisdiction and an older period |
+| OSITRAN concession-road accidents | AUXILIARY | partial transport-safety context | concession infrastructure is not the complete Lima urban road network or a pedestrian-specific citywide outcome |
+| San Isidro traffic-accident records 2026 | AUXILIARY | local outcome research/validation | one district only; pedestrian/severity schema must be profiled before any analytical use |
 | INEI Census 2017 REDATAM at block level | CANDIDATE | static population/socioeconomic exposure proxies | older but structurally detailed; must be treated as static context, not current pedestrian counts |
 | INEI Census 2025 detailed releases | CANDIDATE | newer structural context | use only when equivalent granular fields are actually available and documented |
 | Lima mobility/built-environment GIS layers from public GeoServer/GeoServidor services | CANDIDATE | crossings, signals, transit stops, cycling, road/intersection, zoning, land-use, congestion/context features | audit coverage, publication date, CRS, completeness, ownership and whether each layer covers the 43 districts |
