@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "status": "CANDIDATE_TRANSFORMATION_CONTRACT",
+  "analysis_crs": "EPSG:32718",
+  "absence_policy": "Emit observed values only. Missing/coverage semantics are resolved by the dataset contract, never by fabricating numeric zero.",
+  "transforms": [
+    {
+      "feature_id": "signalized_intersection_density",
+      "source_id": "minam_dot_signalized_intersections",
+      "operation": "point_density",
+      "unit": "intersections_per_km2",
+      "geometry_requirement": "Point",
+      "status": "CANDIDATE",
+      "notes": "Boundary points are assigned once deterministically; source completeness remains unresolved."
+    },
+    {
+      "feature_id": "transit_stop_density",
+      "source_id": "minam_dot_transit_stops",
+      "operation": "point_density",
+      "unit": "stops_per_km2",
+      "geometry_requirement": "Point",
+      "status": "CANDIDATE",
+      "notes": "Context/exposure proxy only; not a pedestrian-volume denominator."
+    },
+    {
+      "feature_id": "transport_route_density",
+      "source_id": "minam_dot_transport_routes",
+      "operation": "line_length_density",
+      "unit": "route_km_per_km2",
+      "geometry_requirement": "LineString|MultiLineString",
+      "status": "CANDIDATE",
+      "notes": "Route geometry is clipped to each analytical unit before length accumulation; it is not measured traffic flow."
+    },
+    {
+      "feature_id": "pedestrian_crossing_density",
+      "source_id": "minam_dot_pedestrian_crossings",
+      "operation": "point_density",
+      "unit": "crossings_per_km2",
+      "geometry_requirement": "Point",
+      "status": "AUXILIARY",
+      "notes": "Current source coverage is too geographically limited for citywide zero semantics."
+    },
+    {
+      "feature_id": "zoning_land_use_composition",
+      "source_id": "minam_dot_zoning",
+      "operation": "polygon_category_composition",
+      "unit": "share_of_analytical_unit_area",
+      "geometry_requirement": "Polygon|MultiPolygon",
+      "status": "CANDIDATE",
+      "category_field": null,
+      "candidate_category_fields": ["uso_genera", "zonif"],
+      "coverage_diagnostics": ["observed_area_ratio", "category_sum_ratio", "overlap_ratio"],
+      "notes": "The official layer exposes both uso_genera and zonif. Category vocabulary and null/overlap behavior must be profiled before one field is frozen. Shares use full unit area, not observed-area renormalization."
+    }
+  ]
+}

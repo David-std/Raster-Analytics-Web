@@ -1,7 +1,7 @@
 # Product Development Specification
 
 Status: **planning baseline**  
-Scope source of truth: **Project Charter v1.1**  
+Scope source of truth: **Project Charter v1.2**  
 Repository baseline audited: `40217fd2b0168ca974d4e681600ccd05e17aa912`
 
 This document defines how the product must be developed while the remaining data and modeling decisions are progressively elaborated. It is intentionally stricter than a feature checklist: every analytical result must have a defensible data lineage, every model decision must be benchmarked, and every user-facing workflow must correspond to a real specialist task.
@@ -17,7 +17,7 @@ That is an engineering starting point, not the final analytical product.
 The project must not degrade into any of the following:
 
 - a heat map of historical crash counts presented as risk;
-- a CNN-RNN selected because it appears in the title rather than because the data representation supports it;
+- a CNN-RNN configuration treated as technically settled before profiling and benchmarking support it;
 - a random train/test split that leaks spatial or temporal information;
 - a synthetic `RiskProvider` used as model evidence;
 - a polished map whose values cannot be explained, reproduced, or traced to sources;
@@ -35,12 +35,14 @@ These constraints are not implementation suggestions.
 1. The product analyzes **spatiotemporal pedestrian collision risk in Metropolitan Lima** and must support comparison between spatial units and periods.
 2. Metropolitan Lima means the **43 districts of the Province of Lima**. Callao is outside the product scope unless a later approved scope change says otherwise.
 3. Historical crash concentration is evidence of occurrence; it is **not, by itself, a comparable risk measure**.
-4. Risk modeling must investigate variables related to at least the following conceptual families where defensible data exists:
+4. Risk modeling must evaluate the Charter v1.2 dimensions where defensible data exists:
+   - observed pedestrian-collision occurrence;
+   - severity of collision consequences;
    - pedestrian exposure or defensible exposure proxies;
-   - motor-vehicle exposure/traffic;
+   - motor-vehicle exposure/traffic and mobility;
    - road and built-environment characteristics;
-   - temporal variation;
-   - observed pedestrian crash outcomes.
+   - spatial and temporal variation.
+   Occurrence and severity are outcome dimensions, not automatically same-period input features. Their exact mathematical treatment remains evidence-driven and leakage-safe.
 5. The exact spatial unit, temporal interval, historical coverage, risk representation, recurrent variant, benchmark metrics, and acceptance thresholds remain open until profiling and benchmarking close them.
 6. The software must contain a convolutional spatial component and a recurrent temporal component in the selected analytical architecture, but the concrete implementation is evidence-driven.
 7. The output is analytical decision support. It is not an official classification, enforcement recommendation, emergency system, or automated institutional decision.
@@ -213,6 +215,10 @@ reason:
 | ONSV people in fatal crashes 2021-2025 | ACCEPTED | identify pedestrian involvement/severity | same fatal-only scope |
 | ONSV vehicles in fatal crashes 2021-2025 | CANDIDATE | vehicle/context features for crash events | useful only after field completeness and join quality are profiled |
 | ONSV historical crashes 2008-2025 | AUXILIARY | historical trend/context | different aggregation/schema; do not merge as event-level records unless compatibility is proven |
+| INEI atropello statistics, first semester 2025 | AUXILIARY | broader occurrence/severity context | aggregate reporting confirms a broader outcome universe but is not a geocoded event-level training source |
+| SUTRAN road crashes 2020-2021 | AUXILIARY | partial-scope event/severity research | event-oriented with fatalities/injuries, but limited to national/departemental road jurisdiction and an older period |
+| OSITRAN concession-road accidents | AUXILIARY | partial transport-safety context | concession infrastructure is not the complete Lima urban road network or a pedestrian-specific citywide outcome |
+| San Isidro traffic-accident records 2026 | AUXILIARY | local outcome research/validation | one district only; pedestrian/severity schema must be profiled before any analytical use |
 | INEI Census 2017 REDATAM at block level | CANDIDATE | static population/socioeconomic exposure proxies | older but structurally detailed; must be treated as static context, not current pedestrian counts |
 | INEI Census 2025 detailed releases | CANDIDATE | newer structural context | use only when equivalent granular fields are actually available and documented |
 | Lima mobility/built-environment GIS layers from public GeoServer/GeoServidor services | CANDIDATE | crossings, signals, transit stops, cycling, road/intersection, zoning, land-use, congestion/context features | audit coverage, publication date, CRS, completeness, ownership and whether each layer covers the 43 districts |
@@ -222,6 +228,10 @@ reason:
 | OpenStreetMap Peru extract | CANDIDATE_FALLBACK | complete road/POI context if official layers are insufficient | public but not official; record extract date, ODbL provenance and feature completeness |
 | SENAMHI observations | CANDIDATE | temporal weather covariates | only if station coverage and temporal alignment are sufficient |
 | Direct pedestrian-volume/count data | BLOCKED/RESEARCH_PRIORITY | preferred pedestrian exposure | no citywide source accepted yet; this is a material project risk |
+
+The Charter v1.2 requires the data analysis to consider **occurrence, severity, exposure and spatial-temporal context** according to actual source availability. The current ONSV detailed source supports a fatal/high-severity stratum, not the complete severity spectrum of pedestrian collisions. Consequence variables from that stratum may be used for descriptive profiling and candidate severity formulations, but they cannot by themselves justify a general all-severity risk claim. Same-period severity outcomes must never be recycled as predictors of the same target period.
+
+A broader non-fatal source therefore remains a data gate. Until it is qualified, fatal-only modeling is allowed only as clearly labelled exploratory/benchmark evidence for high-severity events, not as the definitive product target.
 
 ### 5.4 Exposure is a first-class data risk
 
@@ -489,10 +499,13 @@ The exact mathematical output is intentionally open.
 Candidate formulations can include:
 
 - count/frequency conditional on exposure;
+- severity-aware outcome or severity burden, only when consequence coverage supports a defensible formulation;
 - normalized or relative risk score;
 - event probability over a unit-period;
 - ordinal risk level derived from a continuous model;
 - ranking score for comparing unit-periods.
+
+A fatal-only target must be named and interpreted as fatal/high-severity pedestrian-collision evidence. It cannot be relabelled as general pedestrian-collision risk unless broader outcome coverage is qualified or the approved product scope is formally revised.
 
 ### Target decision requirements
 
@@ -1217,16 +1230,17 @@ code commit
 
 ## 22. Risk register for technical execution
 
-### R1 — Fatal-only outcome source is narrower than the intended problem
+### R1 — Fatal-only outcome source is narrower than the Charter v1.2 problem
 
-Trigger: no acceptable non-fatal collision source is found and final claims imply all pedestrian collisions.
+Trigger: no acceptable non-fatal collision source is found and final claims imply all pedestrian collisions or the full severity spectrum.
 
 Response:
 
-- continue using ONSV fatal events as a valid high-severity layer;
-- research other verifiable public/official sources;
-- never generalize silently;
-- if final product must be narrowed to fatal/high-severity risk, treat that as an explicit scope decision and update requirements/validation language.
+- continue using ONSV fatal events as valid high-severity evidence for profiling and exploratory benchmarking;
+- research other reproducible public/official sources, prioritizing event-level non-fatal pedestrian collisions and consequence severity;
+- never generalize a fatal-only model silently;
+- keep the definitive product target open while the broader outcome/severity source is unresolved;
+- if the approved product scope is ever narrowed to fatal/high-severity risk, treat that as a formal scope/review decision and update requirements, validation language and user-facing semantics before implementation.
 
 ### R2 — No defensible pedestrian exposure source
 

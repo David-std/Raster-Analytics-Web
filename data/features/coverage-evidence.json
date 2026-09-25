@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "captured_at": "2026-09-16",
+  "source": {
+    "workflow": "Feature coverage audit",
+    "run_id": 35151305930,
+    "head_sha": "db9200eec33b0d1fe61bf429f30dd5e369669e21",
+    "status": "PROVEN_WITH_REAL_SOURCE"
+  },
+  "selection_status": "FEATURE_COVERAGE_EVIDENCE_ONLY",
+  "rules": [
+    "Observed geometry coverage is not the same as source completeness.",
+    "No observed feature is not numeric zero unless completeness is separately proven.",
+    "The zoning support mask is a structural urban-support mask, not pedestrian exposure."
+  ],
+  "representations": {
+    "district": 43,
+    "grid_500m_base": 11111,
+    "grid_500m_zoning_support_base": 8494,
+    "grid_1000m_base": 2899,
+    "grid_1000m_zoning_support_base": 2238,
+    "grid_2000m_base": 783,
+    "grid_2000m_zoning_support_base": 620
+  },
+  "sources": [
+    {
+      "source_id": "minam_dot_signalized_intersections",
+      "feature_id": "signalized_intersection_density",
+      "coverage_semantics": "unresolved",
+      "district": {"observed_units": 36, "observed_ratio": 0.837209, "coverage_unresolved_units": 7},
+      "grid_500m_zoning_support_base": {"observed_units": 755, "observed_ratio": 0.088886, "coverage_unresolved_units": 7739},
+      "grid_1000m_zoning_support_base": {"observed_units": 361, "observed_ratio": 0.161305, "coverage_unresolved_units": 1877},
+      "grid_2000m_zoning_support_base": {"observed_units": 151, "observed_ratio": 0.243548, "coverage_unresolved_units": 469}
+    },
+    {
+      "source_id": "minam_dot_transit_stops",
+      "feature_id": "transit_stop_density",
+      "coverage_semantics": "unresolved",
+      "district": {"observed_units": 41, "observed_ratio": 0.953488, "coverage_unresolved_units": 2},
+      "grid_500m_zoning_support_base": {"observed_units": 950, "observed_ratio": 0.111844, "coverage_unresolved_units": 7544},
+      "grid_1000m_zoning_support_base": {"observed_units": 429, "observed_ratio": 0.191689, "coverage_unresolved_units": 1809},
+      "grid_2000m_zoning_support_base": {"observed_units": 170, "observed_ratio": 0.274194, "coverage_unresolved_units": 450}
+    },
+    {
+      "source_id": "minam_dot_transport_routes",
+      "feature_id": "transport_route_density",
+      "coverage_semantics": "unresolved",
+      "district": {"observed_units": 36, "observed_ratio": 0.837209, "coverage_unresolved_units": 7},
+      "grid_500m_zoning_support_base": {"observed_units": 1352, "observed_ratio": 0.159171, "coverage_unresolved_units": 7142},
+      "grid_1000m_zoning_support_base": {"observed_units": 517, "observed_ratio": 0.23101, "coverage_unresolved_units": 1721},
+      "grid_2000m_zoning_support_base": {"observed_units": 189, "observed_ratio": 0.304839, "coverage_unresolved_units": 431}
+    },
+    {
+      "source_id": "minam_dot_pedestrian_crossings",
+      "feature_id": "pedestrian_crossing_density",
+      "coverage_semantics": "unresolved",
+      "district": {"observed_units": 7, "observed_ratio": 0.162791, "coverage_unresolved_units": 36},
+      "grid_500m_zoning_support_base": {"observed_units": 45, "observed_ratio": 0.005298, "coverage_unresolved_units": 8449},
+      "grid_1000m_zoning_support_base": {"observed_units": 23, "observed_ratio": 0.010277, "coverage_unresolved_units": 2215},
+      "grid_2000m_zoning_support_base": {"observed_units": 11, "observed_ratio": 0.017742, "coverage_unresolved_units": 609}
+    },
+    {
+      "source_id": "minam_dot_zoning",
+      "feature_id": "zoning_land_use_composition",
+      "coverage_semantics": "unresolved",
+      "district": {"observed_units": 43, "observed_ratio": 1.0, "coverage_unresolved_units": 0},
+      "grid_500m_zoning_support_base": {"observed_units": 8494, "observed_ratio": 1.0, "coverage_unresolved_units": 0},
+      "grid_1000m_zoning_support_base": {"observed_units": 2238, "observed_ratio": 1.0, "coverage_unresolved_units": 0},
+      "grid_2000m_zoning_support_base": {"observed_units": 620, "observed_ratio": 1.0, "coverage_unresolved_units": 0}
+    }
+  ],
+  "interpretation": {
+    "zoning": "Strong structural-support evidence after clipping to the project boundary; still contextual, not exposure.",
+    "transit_stops": "Broad district presence but sparse at grid level; absence remains unresolved until source completeness is independently established.",
+    "transport_routes": "Useful contextual geometry, but route presence is not measured vehicle or pedestrian flow.",
+    "signalized_intersections": "Useful built-environment context with incomplete observed coverage at fine grids.",
+    "pedestrian_crossings": "Too geographically limited for citywide numeric absence semantics; auxiliary only."
+  }
+}

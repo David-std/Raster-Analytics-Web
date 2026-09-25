@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "status": "EXTRACTION_NOT_YET_PROVEN",
+  "selected_candidate": "inei_census_2017_redatam",
+  "selection_reason": "The official INEI census index exposes a 2017 REDATAM database at manzana level, which is currently a finer documented spatial product than the public 2025 first-results entry. Selection is provisional until reproducible extraction and geometry alignment are proven.",
+  "recency_rule": "Prefer fitness for analytical purpose over publication year alone. A newer source does not replace an older structural source unless compatible geography, variables, coverage and reproducible access are demonstrated.",
+  "candidate_feature": {
+    "id": "population_density_static",
+    "role": "exposure_proxy",
+    "allowed_use": "structural contextual covariate",
+    "forbidden_uses": [
+      "direct_pedestrian_count",
+      "pedestrian_exposure_denominator",
+      "count_model_offset"
+    ]
+  },
+  "required_extraction_evidence": [
+    "reproducible population table for Lima province",
+    "stable geographic identifier at the finest usable census geography",
+    "matching or officially reconcilable geometry identifier",
+    "43-district project-scope filter with Callao excluded",
+    "population totals reconciled against a coarser official control total",
+    "null and unmatched geography report",
+    "documented census reference date and static-snapshot semantics"
+  ],
+  "spatial_alignment_tests": [
+    "district aggregation reconciliation",
+    "manzana-to-analysis-unit intersection coverage",
+    "population conservation after areal allocation if boundaries are not nested",
+    "sensitivity to allocation method for partially intersecting manzanas"
+  ],
+  "allocation_policy": {
+    "preferred": "Use stable geographic keys when analytical units nest cleanly within census geography.",
+    "conditional": "If grid cells cut census polygons, test area-weighted allocation and do not imply that population is uniformly distributed without documenting the approximation.",
+    "future_option": "Use ancillary built-up/residential information for dasymetric allocation only if the added source and method are separately validated."
+  },
+  "2025_census_policy": "Re-evaluate when INEI publishes a reproducible fine-geography product compatible with the analytical pipeline. Do not mix 2017 and 2025 values as if they were the same reference snapshot."
+}
