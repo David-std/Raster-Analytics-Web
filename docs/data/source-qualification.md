@@ -8,10 +8,12 @@ It does **not** define the final model target, spatial unit, temporal interval, 
 
 The product is intended to support spatiotemporal comparison of pedestrian-collision risk across Lima Metropolitana. Historical collision concentration is an observed outcome layer, not a complete risk measure by itself.
 
-The analytical dataset therefore needs, as far as defensible sources permit:
+The analytical dataset therefore needs, as far as defensible sources permit, the dimensions made explicit in Project Charter v1.2:
 
 ```text
-observed pedestrian-collision outcomes
+observed pedestrian-collision occurrence
+        +
+severity of consequences
         +
 pedestrian exposure or a validated proxy
         +
@@ -53,6 +55,7 @@ The current source audit deliberately reports the dataset as **not model-ready**
 
 ```text
 outcome              PARTIAL_SCOPE
+severity             PARTIAL_SCOPE
 pedestrian exposure  RESEARCH_REQUIRED
 traffic exposure     RESEARCH_REQUIRED
 built environment    RESEARCH_REQUIRED
@@ -155,7 +158,28 @@ The public SRATMA/ONSV crash viewer exposes a broader interactive crash universe
 
 However, P1 has not yet proven a stable, documented, reusable machine-readable public export/API from that viewer. Therefore it is registered as `BLOCKED` rather than being scraped opportunistically and presented as a reliable source.
 
-**P1 outcome conclusion:** the ONSV fatal layer is retained, but the final product target remains `PARTIAL_SCOPE` until the project either obtains a broader event source or explicitly validates a severe/fatal-risk scope change.
+**P1 outcome conclusion:** the ONSV fatal layer is retained, but the final product target remains `PARTIAL_SCOPE`. Under Project Charter v1.2, fatal-only evidence may support high-severity exploratory benchmarking, but it must not be presented as general pedestrian-collision risk unless broader outcome/severity coverage is qualified or the approved scope is formally revised.
+
+## 4.5 Charter v1.2 outcome and severity re-review — 2026-09-25
+
+A focused re-review was performed before freezing the target. The purpose was to find a reproducible source that broadens the current fatal-only outcome and, ideally, exposes consequence severity at useful spatial/temporal granularity for Metropolitan Lima.
+
+Findings:
+
+- **ONSV open data** still publishes detailed event/person/vehicle files for **fatal crashes**. This remains the strongest reproducible geocoded source currently accepted by the repository, but it is a high-severity stratum rather than the complete pedestrian-collision population.
+- **INEI, first semester 2025** reports 2,796 accidents classified as `atropello` or `atropello y fuga` in Lima Metropolitana. This confirms a broader administrative outcome universe, but the published evidence reviewed here is aggregate statistical reporting rather than a geocoded event-level training table.
+- **SUTRAN road-crash open data (2020-2021)** is event-oriented and includes modality, fatalities and injuries, but its jurisdiction is national/departemental roads rather than the complete urban street system of the 43 Lima districts. It is therefore retained only as partial-scope research evidence.
+- **OSITRAN concession-road accident data** is reproducible public data, but describes concession infrastructure and does not establish a complete pedestrian-specific outcome population for Metropolitan Lima.
+- **Municipal San Isidro 2026 traffic-accident records** demonstrate that local non-fatal/public accident data may exist, but one district cannot be promoted into a citywide target source.
+
+The public SRATMA/ONSV viewer was also re-reviewed. A stable documented machine-readable public export suitable for a reproducible pipeline was still not established, so no browser-internal or undocumented endpoint is adopted.
+
+**Result:** no source was found in this review that simultaneously satisfies citywide Metropolitan Lima coverage, event-level reproducibility, pedestrian-specific semantics, non-fatal inclusion and usable consequence severity. The broader outcome and full-severity gates therefore remain open.
+
+Severity handling follows two rules:
+
+1. consequence information observed inside fatal crashes is valid descriptive/high-severity evidence;
+2. same-period consequence variables are outcomes and must not be reused as predictors of the same target period.
 
 ## 5. Pedestrian exposure
 
@@ -339,7 +363,7 @@ P1 does **not** require every source to be accepted. Some gaps may legitimately 
 
 The next data research tasks are ordered by analytical impact:
 
-1. **Broaden/confirm the outcome definition.** Determine whether SRATMA/another official source exposes a stable machine-readable event dataset for non-fatal pedestrian collisions. In parallel, resolve the strict `ATROPELLO` vs broader pedestrian-linked fatal-event semantics with domain review.
+1. **Broaden/confirm outcome and severity coverage.** Continue seeking an authorized, stable machine-readable event dataset for non-fatal pedestrian collisions with consequence severity. In parallel, resolve the strict `ATROPELLO` vs broader pedestrian-linked fatal-event semantics with domain review. The 2026-09-25 review did not find a citywide source that closes this gate.
 2. **Direct pedestrian exposure.** Locate/request PMU or other official pedestrian-count microdata. If unavailable, design proxy candidates but do not accept them until they are validated.
 3. **Direct vehicle exposure.** Search for ATU/MML urban traffic counts with station/segment and time metadata. Toll data and the 22-feature congestion layer are insufficient substitutes.
 4. **District/analysis geometry.** Obtain and version a suitable official polygon/road geometry source and quantify exact 43-district coverage.
@@ -370,6 +394,11 @@ outcome:
   fatal_pedestrian_linked_source: PROVEN_WITH_REAL_SOURCE
   strict_atropello_target: CANDIDATE_NOT_SELECTED
   broader_pedestrian_collision_source: BLOCKED
+
+severity:
+  fatal_stratum_consequence_data: PROVEN_WITH_REAL_SOURCE
+  full_collision_severity_spectrum: BLOCKED
+  definitive_severity_target: NOT_SELECTED
 
 pedestrian_exposure:
   direct_citywide_counts: BLOCKED
